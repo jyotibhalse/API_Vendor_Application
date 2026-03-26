@@ -404,6 +404,7 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
         full_name=user.full_name,
         shop_name=user.shop_name,
         phone=user.phone,
+        address=user.address,
         role=user.role,
     )
     db.add(new_user)
@@ -438,6 +439,7 @@ async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):
             "full_name": db_user.full_name,
             "shop_name": db_user.shop_name,
             "phone": db_user.phone,
+            "address": db_user.address,
             "role": db_user.role,
             "is_active": db_user.is_active,
         },
@@ -452,6 +454,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "full_name": current_user.full_name,
         "shop_name": current_user.shop_name,
         "phone": current_user.phone,
+        "address": current_user.address,
         "role": current_user.role,
         "is_active": current_user.is_active,
     }
@@ -462,12 +465,14 @@ async def update_profile(
     full_name: str = None,
     shop_name: str = None,
     phone: str = None,
+    address: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if full_name  is not None: current_user.full_name  = full_name
     if shop_name  is not None: current_user.shop_name  = shop_name
     if phone      is not None: current_user.phone      = phone
+    if address    is not None: current_user.address    = address
     await db.commit()
     return {"message": "Profile updated"}
 

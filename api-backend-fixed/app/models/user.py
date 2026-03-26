@@ -13,4 +13,5 @@ class User(Base):
     full_name = Column(String, nullable=True)
     shop_name = Column(String, nullable=True)
     phone = Column(String, nullable=True)
-    role = Column(String, default="vendor")  # vendor | admin
+    address = Column(String, nullable=True)
+    role = Column(String, default="vendor")  # vendor | customer | admin

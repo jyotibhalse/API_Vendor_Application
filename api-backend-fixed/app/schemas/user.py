@@ -8,6 +8,7 @@ class UserCreate(BaseModel):
     full_name: Optional[str] = None
     shop_name: Optional[str] = None
     phone: Optional[str] = None
+    address: Optional[str] = None
     role: Literal["vendor", "customer"] = "vendor"
 
 class UserLogin(BaseModel):
@@ -20,6 +21,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str] = None
     shop_name: Optional[str] = None
     phone: Optional[str] = None
+    address: Optional[str] = None
     role: str
     is_active: bool
 

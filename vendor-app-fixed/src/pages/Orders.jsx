@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import api from "../api/axios"
-import { Search, X, Package, CheckCircle, Truck, MapPin, XCircle, Clock } from "lucide-react"
+import { Search, X, Package, CheckCircle, Truck, MapPin, XCircle, Clock, Mail, Phone, UserRound } from "lucide-react"
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -171,6 +171,7 @@ function OrderCard({ order, onRefresh }) {
   const s       = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
   const actions = NEXT_ACTIONS[order.status] || []
   const parts   = order.items?.map(i => i.vehicle_model || `Variant #${i.variant_id}`).join(", ") || "Parts"
+  const customer = order.customer
   const time    = order.created_at
     ? new Date(order.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
     : ""
@@ -228,6 +229,19 @@ function OrderCard({ order, onRefresh }) {
 
         {/* Row 3: Parts */}
         <div className="text-[12px] text-[#9ca3af] mb-[10px] truncate">{parts}</div>
+
+        <div
+          className="rounded-[14px] px-[12px] py-[10px] mb-[10px]"
+          style={{ background: "#101214", border: "1px solid #252830" }}
+        >
+          <div className="text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[8px]">Customer Details</div>
+          <div className="space-y-[6px]">
+            <CustomerInfoRow icon={UserRound} value={customer?.name || "Name not provided"} />
+            <CustomerInfoRow icon={Phone} value={customer?.phone || "Phone not provided"} />
+            <CustomerInfoRow icon={Mail} value={customer?.email || "Email not provided"} />
+            <CustomerInfoRow icon={MapPin} value={customer?.address || "Address not provided"} multiline />
+          </div>
+        </div>
 
         {/* Row 4: Status pill + time */}
         <div className="flex items-center gap-2">
@@ -320,5 +334,16 @@ function OrderCard({ order, onRefresh }) {
 function step_index(key) {
   const map = { accepted: 1, packing: 2, out_for_delivery: 3, delivered: 4 }
   return map[key] || 0
+}
+
+function CustomerInfoRow({ icon: Icon, value, multiline = false }) {
+  return (
+    <div className={`flex gap-[8px] ${multiline ? "items-start" : "items-center"}`}>
+      <Icon size={12} className="text-accent flex-shrink-0 mt-[2px]" />
+      <span className={`text-[11px] text-[#d1d5db] ${multiline ? "leading-[1.4]" : ""}`}>
+        {value}
+      </span>
+    </div>
+  )
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react"
+import { Mail, MapPin, Phone, UserRound } from "lucide-react"
 import api from "../api/axios"
 
 const POLL_INTERVAL_MS = 15000
@@ -299,6 +300,7 @@ export default function KOT() {
 
 function KOTCard({ order, onAction }) {
   const isUrgent = order.is_urgent
+  const customer = order.customer
   const elapsed = order.created_at
     ? getTimeAgo(new Date(order.created_at))
     : "Just now"
@@ -364,6 +366,19 @@ function KOTCard({ order, onAction }) {
             <div className="px-[14px] py-[10px] text-[12px] text-[#9ca3af]">No items</div>
           )}
         </div>
+
+        <div
+          className="mt-[10px] rounded-[12px] px-[12px] py-[10px]"
+          style={{ background: "#101214", border: "1px solid #252830" }}
+        >
+          <div className="text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[8px]">Customer Details</div>
+          <div className="space-y-[6px]">
+            <CustomerInfoRow icon={UserRound} value={customer?.name || "Name not provided"} />
+            <CustomerInfoRow icon={Phone} value={customer?.phone || "Phone not provided"} />
+            <CustomerInfoRow icon={Mail} value={customer?.email || "Email not provided"} />
+            <CustomerInfoRow icon={MapPin} value={customer?.address || "Address not provided"} multiline />
+          </div>
+        </div>
       </div>
 
       <div className="flex" style={{ borderTop: "1px solid #252830" }}>
@@ -413,4 +428,15 @@ function getTimeAgo(date) {
   }
 
   return `${Math.floor(minutes / 60)}h ago`
+}
+
+function CustomerInfoRow({ icon: Icon, value, multiline = false }) {
+  return (
+    <div className={`flex gap-[8px] ${multiline ? "items-start" : "items-center"}`}>
+      <Icon size={12} className="text-accent flex-shrink-0 mt-[2px]" />
+      <span className={`text-[11px] text-[#d1d5db] ${multiline ? "leading-[1.4]" : ""}`}>
+        {value}
+      </span>
+    </div>
+  )
 }

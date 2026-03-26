@@ -13,7 +13,7 @@ export default function CustomerProfile() {
   const navigate = useNavigate()
   const { logout, refreshUser } = useAuth()
   const [customer, setCustomer] = useState(null)
-  const [form, setForm] = useState({ full_name: "", phone: "" })
+  const [form, setForm] = useState({ full_name: "", phone: "", address: "" })
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -24,6 +24,7 @@ export default function CustomerProfile() {
         setForm({
           full_name: response.data.full_name || "",
           phone: response.data.phone || "",
+          address: response.data.address || "",
         })
       })
       .catch(() => {})
@@ -39,6 +40,9 @@ export default function CustomerProfile() {
       }
       if (form.phone) {
         params.append("phone", form.phone)
+      }
+      if (form.address) {
+        params.append("address", form.address)
       }
 
       await api.put(`/auth/profile?${params.toString()}`)
@@ -106,6 +110,24 @@ export default function CustomerProfile() {
             value={form.phone}
             onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
             className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none"
+            style={{ border: "1px solid #252830" }}
+            onFocus={(event) => {
+              event.target.style.borderColor = "#f4a623"
+            }}
+            onBlur={(event) => {
+              event.target.style.borderColor = "#252830"
+            }}
+          />
+        </div>
+
+        <div>
+          <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[5px]">Address</label>
+          <textarea
+            rows={3}
+            placeholder="Street, area, city, pincode"
+            value={form.address}
+            onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
+            className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none resize-none"
             style={{ border: "1px solid #252830" }}
             onFocus={(event) => {
               event.target.style.borderColor = "#f4a623"

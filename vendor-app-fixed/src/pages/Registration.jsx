@@ -31,6 +31,11 @@ const FIELD_META = {
     placeholder: "+91 98765 43210",
     type: "tel",
   },
+  address: {
+    label: "Address",
+    placeholder: "Street, area, city, pincode",
+    type: "textarea",
+  },
   email: {
     label: "Email Address",
     placeholder: "name@example.com",
@@ -51,6 +56,7 @@ export default function Registration() {
     shop_name: "",
     full_name: "",
     phone: "",
+    address: "",
     email: "",
     password: "",
   })
@@ -59,7 +65,7 @@ export default function Registration() {
 
   const fields = role === "vendor"
     ? ["shop_name", "full_name", "phone", "email", "password"]
-    : ["full_name", "phone", "email", "password"]
+    : ["full_name", "phone", "address", "email", "password"]
 
   const handleChange = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -77,6 +83,7 @@ export default function Registration() {
         full_name: form.full_name || null,
         shop_name: role === "vendor" ? form.shop_name || null : null,
         phone: form.phone || null,
+        address: role === "customer" ? form.address || null : null,
         role,
       })
 
@@ -143,21 +150,39 @@ export default function Registration() {
               <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[5px]">
                 {meta.label}
               </label>
-              <input
-                type={meta.type}
-                placeholder={meta.placeholder}
-                value={form[field]}
-                onChange={(event) => handleChange(field, event.target.value)}
-                required={isRequired}
-                className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none transition-all"
-                style={{ border: "1px solid #252830" }}
-                onFocus={(event) => {
-                  event.target.style.borderColor = "#f4a623"
-                }}
-                onBlur={(event) => {
-                  event.target.style.borderColor = "#252830"
-                }}
-              />
+              {meta.type === "textarea" ? (
+                <textarea
+                  placeholder={meta.placeholder}
+                  value={form[field]}
+                  onChange={(event) => handleChange(field, event.target.value)}
+                  required={isRequired}
+                  rows={3}
+                  className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none transition-all resize-none"
+                  style={{ border: "1px solid #252830" }}
+                  onFocus={(event) => {
+                    event.target.style.borderColor = "#f4a623"
+                  }}
+                  onBlur={(event) => {
+                    event.target.style.borderColor = "#252830"
+                  }}
+                />
+              ) : (
+                <input
+                  type={meta.type}
+                  placeholder={meta.placeholder}
+                  value={form[field]}
+                  onChange={(event) => handleChange(field, event.target.value)}
+                  required={isRequired}
+                  className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none transition-all"
+                  style={{ border: "1px solid #252830" }}
+                  onFocus={(event) => {
+                    event.target.style.borderColor = "#f4a623"
+                  }}
+                  onBlur={(event) => {
+                    event.target.style.borderColor = "#252830"
+                  }}
+                />
+              )}
             </div>
           )
         })}

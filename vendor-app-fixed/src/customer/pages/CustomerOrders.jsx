@@ -1,6 +1,7 @@
 import { CheckCircle, Clock, MapPin, Package, Search, Store, Truck, X, XCircle } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import api from "../../api/axios"
+import { useOrderRealtime } from "../../hooks/useOrderRealtime"
 
 const STATUS_CONFIG = {
   pending: { label: "Pending", color: "#f4a623", bg: "rgba(244,166,35,0.12)", icon: Clock, step: 0 },
@@ -50,8 +51,13 @@ export default function CustomerOrders() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState("All")
+  const activeFilterRef = useRef(activeFilter)
+  const searchRef = useRef(search)
 
   useEffect(() => {
+    activeFilterRef.current = activeFilter
+    searchRef.current = search
+
     const timeoutId = setTimeout(() => {
       fetchOrders(activeFilter, search)
     }, 300)
@@ -59,8 +65,10 @@ export default function CustomerOrders() {
     return () => clearTimeout(timeoutId)
   }, [activeFilter, search])
 
-  const fetchOrders = async (filter, query) => {
-    setLoading(true)
+  const fetchOrders = async (filter, query, { showLoader = true } = {}) => {
+    if (showLoader) {
+      setLoading(true)
+    }
 
     try {
       const params = new URLSearchParams()
@@ -83,6 +91,16 @@ export default function CustomerOrders() {
       setLoading(false)
     }
   }
+
+  useOrderRealtime({
+    onEvent: (message) => {
+      if (!["order.created", "order.updated"].includes(message.type)) {
+        return
+      }
+
+      fetchOrders(activeFilterRef.current, searchRef.current, { showLoader: false })
+    },
+  })
 
   const activeCount = orders.filter((order) => ["accepted", "packing", "out_for_delivery"].includes(order.status)).length
   const pendingCount = orders.filter((order) => order.status === "pending").length

@@ -141,7 +141,10 @@ async def create_customer_order(
 
     payload = await get_order_payload(db, order.id)
     if payload is not None:
-        await order_realtime_hub.publish(order.vendor_id, "order.created", payload)
+        recipients = {order.vendor_id}
+        if order.customer_id:
+            recipients.add(order.customer_id)
+        await order_realtime_hub.publish_many(recipients, "order.created", payload)
 
     return {
         "message": "Order placed successfully",
@@ -181,6 +184,9 @@ async def get_customer_orders(
                 for order in orders
                 if order.vehicle_number and lowered in order.vehicle_number.lower()
             ]
+
+    # Keep delivered orders at the end while preserving newest-first ordering within each status group.
+    orders.sort(key=lambda order: order.status == "delivered")
 
     vendor_cache: dict[int, User | None] = {}
     variant_cache: dict[int, Variant | None] = {}

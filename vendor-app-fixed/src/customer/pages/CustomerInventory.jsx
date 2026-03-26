@@ -1,7 +1,8 @@
 import { AlertCircle, Camera, ChevronDown, ChevronUp, Search, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios"
+import { useOrderRealtime } from "../../hooks/useOrderRealtime"
 
 const BASE_URL = "http://localhost:8000"
 
@@ -134,8 +135,13 @@ export default function CustomerInventory() {
     vehicle_number: "",
     is_urgent: false,
   })
+  const hasLoadedInventoryRef = useRef(false)
 
-  const fetchInventory = async () => {
+  const fetchInventory = async ({ showLoader = true } = {}) => {
+    if (showLoader) {
+      setLoading(true)
+    }
+
     try {
       const response = await api.get("/customer/inventory")
       setVendors(response.data)
@@ -143,12 +149,24 @@ export default function CustomerInventory() {
       console.log(err.response?.data || err.message)
     } finally {
       setLoading(false)
+      hasLoadedInventoryRef.current = true
     }
   }
 
   useEffect(() => {
     fetchInventory()
   }, [])
+
+  useOrderRealtime({
+    enabled: hasLoadedInventoryRef.current,
+    onEvent: (message) => {
+      if (!["order.created", "order.updated"].includes(message.type)) {
+        return
+      }
+
+      fetchInventory({ showLoader: false })
+    },
+  })
 
   const inventory = flattenInventory(vendors)
   const toggleBrand = (id) => setExpandedBrands((current) => ({ ...current, [id]: !current[id] }))

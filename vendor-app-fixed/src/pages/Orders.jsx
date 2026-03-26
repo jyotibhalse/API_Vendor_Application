@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import api from "../api/axios"
 import { Search, X, Package, CheckCircle, Truck, MapPin, XCircle, Clock, Mail, Phone, UserRound } from "lucide-react"
+import { useOrderRealtime } from "../hooks/useOrderRealtime"
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -58,9 +59,13 @@ export default function Orders() {
   const [search, setSearch]             = useState("")
   const [loading, setLoading]           = useState(true)
   const debounceRef                     = useRef(null)
+  const activeFilterRef                 = useRef(activeFilter)
+  const searchRef                       = useRef(search)
 
-  const fetchOrders = async (filter, searchVal) => {
-    setLoading(true)
+  const fetchOrders = async (filter, searchVal, { showLoader = true } = {}) => {
+    if (showLoader) {
+      setLoading(true)
+    }
     try {
       const param = FILTER_PARAM[filter]
       let url = "/orders/?"
@@ -75,10 +80,28 @@ export default function Orders() {
     }
   }
 
-  useEffect(() => { fetchOrders(activeFilter, search) }, [activeFilter])
+  useEffect(() => {
+    activeFilterRef.current = activeFilter
+    fetchOrders(activeFilter, search)
+  }, [activeFilter])
+
+  useEffect(() => {
+    searchRef.current = search
+  }, [search])
+
+  useOrderRealtime({
+    onEvent: (message) => {
+      if (!["order.created", "order.updated"].includes(message.type)) {
+        return
+      }
+
+      fetchOrders(activeFilterRef.current, searchRef.current, { showLoader: false })
+    },
+  })
 
   const handleSearchChange = (val) => {
     setSearch(val)
+    searchRef.current = val
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => fetchOrders(activeFilter, val), 400)
   }
@@ -157,7 +180,7 @@ export default function Orders() {
         ) : (
           orders.map(order => (
             <OrderCard key={order.id} order={order}
-              onRefresh={() => fetchOrders(activeFilter, search)} />
+              onRefresh={() => fetchOrders(activeFilterRef.current, searchRef.current, { showLoader: false })} />
           ))
         )}
       </div>

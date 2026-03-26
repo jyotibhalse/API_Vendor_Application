@@ -3,11 +3,12 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, st
 from app.core.database import AsyncSessionLocal
 from app.core.realtime import order_realtime_hub
 from app.core.security import get_user_from_token
+from app.models.user import User
 
 router = APIRouter(tags=["Realtime"])
 
 
-async def _get_vendor_id_for_socket(websocket: WebSocket) -> int | None:
+async def _get_socket_user(websocket: WebSocket) -> User | None:
     token = websocket.query_params.get("token")
     if not token:
         await websocket.close(
@@ -26,23 +27,11 @@ async def _get_vendor_id_for_socket(websocket: WebSocket) -> int | None:
             )
             return None
 
-        if user.role != "vendor":
-            await websocket.close(
-                code=status.WS_1008_POLICY_VIOLATION,
-                reason="Vendor access required",
-            )
-            return None
-
-        return user.id
+        return user
 
 
-@router.websocket("/ws/kot")
-async def kot_updates(websocket: WebSocket) -> None:
-    vendor_id = await _get_vendor_id_for_socket(websocket)
-    if vendor_id is None:
-        return
-
-    await order_realtime_hub.connect(vendor_id, websocket)
+async def _serve_order_socket(user_id: int, websocket: WebSocket) -> None:
+    await order_realtime_hub.connect(user_id, websocket)
     try:
         await order_realtime_hub.send_json(
             websocket,
@@ -59,4 +48,29 @@ async def kot_updates(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         pass
     finally:
-        await order_realtime_hub.disconnect(vendor_id, websocket)
+        await order_realtime_hub.disconnect(user_id, websocket)
+
+
+@router.websocket("/ws/orders")
+async def order_updates(websocket: WebSocket) -> None:
+    user = await _get_socket_user(websocket)
+    if user is None:
+        return
+
+    await _serve_order_socket(user.id, websocket)
+
+
+@router.websocket("/ws/kot")
+async def kot_updates(websocket: WebSocket) -> None:
+    user = await _get_socket_user(websocket)
+    if user is None:
+        return
+
+    if user.role != "vendor":
+        await websocket.close(
+            code=status.WS_1008_POLICY_VIOLATION,
+            reason="Vendor access required",
+        )
+        return
+
+    await _serve_order_socket(user.id, websocket)

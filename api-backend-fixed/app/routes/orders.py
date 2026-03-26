@@ -633,7 +633,10 @@ async def create_order(
 
     payload = await get_order_payload(db, order.id)
     if payload is not None:
-        await order_realtime_hub.publish(order.vendor_id, "order.created", payload)
+        recipients = {order.vendor_id}
+        if order.customer_id:
+            recipients.add(order.customer_id)
+        await order_realtime_hub.publish_many(recipients, "order.created", payload)
 
     return {"message": "Order created", "order_id": order.id}
 
@@ -666,6 +669,9 @@ async def get_orders(
             orders = [o for o in orders if o.id == int(s)]
         else:
             orders = [o for o in orders if o.vehicle_number and s.lower() in o.vehicle_number.lower()]
+
+    # Keep delivered orders at the end while preserving newest-first ordering within each status group.
+    orders.sort(key=lambda order: order.status == "delivered")
 
     return await serialize_orders(orders, db)
 
@@ -704,7 +710,10 @@ async def accept_order(
 
     payload = await get_order_payload(db, order.id)
     if payload is not None:
-        await order_realtime_hub.publish(order.vendor_id, "order.updated", payload)
+        recipients = {order.vendor_id}
+        if order.customer_id:
+            recipients.add(order.customer_id)
+        await order_realtime_hub.publish_many(recipients, "order.updated", payload)
 
     return {"message": "Order accepted and stock updated"}
 
@@ -731,7 +740,10 @@ async def reject_order(
 
     payload = await get_order_payload(db, order.id)
     if payload is not None:
-        await order_realtime_hub.publish(order.vendor_id, "order.updated", payload)
+        recipients = {order.vendor_id}
+        if order.customer_id:
+            recipients.add(order.customer_id)
+        await order_realtime_hub.publish_many(recipients, "order.updated", payload)
 
     return {"message": "Order rejected"}
 
@@ -769,6 +781,9 @@ async def update_order_status(
 
     payload = await get_order_payload(db, order.id)
     if payload is not None:
-        await order_realtime_hub.publish(order.vendor_id, "order.updated", payload)
+        recipients = {order.vendor_id}
+        if order.customer_id:
+            recipients.add(order.customer_id)
+        await order_realtime_hub.publish_many(recipients, "order.updated", payload)
 
     return {"message": f"Order status updated to {status}", "order_id": order.id}

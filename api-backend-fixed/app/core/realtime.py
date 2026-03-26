@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 from collections import defaultdict
+from collections.abc import Iterable
 
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
@@ -90,10 +91,10 @@ class OrderRealtimeHub:
     async def send_json(self, websocket: WebSocket, payload: dict) -> None:
         await websocket.send_json(payload)
 
-    async def publish(self, vendor_id: int, event_type: str, order: dict) -> None:
+    async def publish(self, recipient_id: int, event_type: str, order: dict) -> None:
         message = {
             "type": event_type,
-            "vendor_id": vendor_id,
+            "recipient_id": recipient_id,
             "order": order,
         }
 
@@ -104,7 +105,12 @@ class OrderRealtimeHub:
             except Exception:
                 logger.exception("Redis publish failed. Falling back to local broadcast.")
 
-        await self._broadcast_local(vendor_id, message)
+        await self._broadcast_local(recipient_id, message)
+
+    async def publish_many(self, recipient_ids: Iterable[int], event_type: str, order: dict) -> None:
+        unique_recipient_ids = {recipient_id for recipient_id in recipient_ids if recipient_id}
+        for recipient_id in unique_recipient_ids:
+            await self.publish(recipient_id, event_type, order)
 
     async def _listen_for_messages(self) -> None:
         try:
@@ -123,11 +129,11 @@ class OrderRealtimeHub:
                     logger.exception("Received invalid realtime payload from Redis")
                     continue
 
-                vendor_id = int(payload.get("vendor_id", 0))
-                if vendor_id <= 0:
+                recipient_id = int(payload.get("recipient_id", 0))
+                if recipient_id <= 0:
                     continue
 
-                await self._broadcast_local(vendor_id, payload)
+                await self._broadcast_local(recipient_id, payload)
         except asyncio.CancelledError:
             raise
         except Exception:

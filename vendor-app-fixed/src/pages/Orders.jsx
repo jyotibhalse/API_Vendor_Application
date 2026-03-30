@@ -114,10 +114,10 @@ export default function Orders() {
 
       {/* Header */}
       <div className="px-5 pt-4 pb-3 flex-shrink-0 flex items-center justify-between"
-           style={{ borderBottom: "1px solid #252830" }}>
+           style={{ borderBottom: "1px solid rgb(var(--color-border))" }}>
         <div>
-          <div className="font-syne font-extrabold text-[22px] text-white">Orders</div>
-          <div className="text-[12px] text-[#9ca3af]">{orders.length} result{orders.length !== 1 ? "s" : ""}</div>
+          <div className="font-syne font-extrabold text-[22px] text-text">Orders</div>
+          <div className="text-[12px] text-text-muted">{orders.length} result{orders.length !== 1 ? "s" : ""}</div>
         </div>
         <div className="flex gap-2">
           {pending > 0 && (
@@ -138,17 +138,17 @@ export default function Orders() {
       {/* Search */}
       <div className="px-5 pt-3 pb-1 flex-shrink-0">
         <div className="flex items-center gap-2 px-3 rounded-xl"
-             style={{ background: "#141618", border: "1px solid #252830" }}>
-          <Search size={14} className="text-[#9ca3af] flex-shrink-0" />
+             style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
+          <Search size={14} className="text-text-muted flex-shrink-0" />
           <input
             type="text" value={search}
             onChange={e => handleSearchChange(e.target.value)}
             placeholder="Search by Order ID or Vehicle Reg No…"
-            className="flex-1 bg-transparent py-[9px] text-[12px] text-white placeholder-[#94a3b8] outline-none"
+            className="flex-1 bg-transparent py-[9px] text-[12px] text-text placeholder:text-text-faint outline-none"
           />
           {search && (
             <button onClick={() => handleSearchChange("")}>
-              <X size={13} className="text-[#9ca3af] hover:text-white" />
+              <X size={13} className="text-text-muted hover:text-text" />
             </button>
           )}
         </div>
@@ -160,8 +160,8 @@ export default function Orders() {
           <button key={f} onClick={() => setActiveFilter(f)}
             className={`px-[12px] py-[5px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-all
               ${activeFilter === f
-                ? "bg-accent text-black border-accent"
-                : "bg-surface2 text-[#9ca3af] border-[#252830]"}`}>
+                ? "bg-accent text-on-accent border-accent"
+                : "bg-surface2 text-text-muted border-border"}`}>
             {f}
           </button>
         ))}
@@ -170,12 +170,12 @@ export default function Orders() {
       {/* Orders list */}
       <div className="flex-1 overflow-y-auto px-5 pb-5">
         {loading ? (
-          <div className="text-[13px] text-[#9ca3af] text-center mt-10">Loading orders…</div>
+          <div className="text-[13px] text-text-muted text-center mt-10">Loading orders…</div>
         ) : orders.length === 0 ? (
           <div className="text-center mt-16">
             <div className="text-5xl mb-4">🛒</div>
-            <div className="text-[15px] font-semibold text-white">No orders found</div>
-            <div className="text-[12px] text-[#9ca3af] mt-1">Try adjusting your search or filter</div>
+            <div className="text-[15px] font-semibold text-text">No orders found</div>
+            <div className="text-[12px] text-text-muted mt-1">Try adjusting your search or filter</div>
           </div>
         ) : (
           orders.map(order => (
@@ -223,7 +223,7 @@ function OrderCard({ order, onRefresh }) {
 
   return (
     <div className="rounded-2xl mb-[10px] overflow-hidden"
-         style={{ background: "#141618", border: "1px solid #252830" }}>
+         style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
 
       {/* Card top */}
       <div className="p-[14px]">
@@ -240,24 +240,24 @@ function OrderCard({ order, onRefresh }) {
               </span>
             )}
           </div>
-          <div className="font-syne font-extrabold text-[16px] text-white">
+          <div className="font-syne font-extrabold text-[16px] text-text">
             ₹{order.total_amount?.toLocaleString("en-IN") || "—"}
           </div>
         </div>
 
         {/* Row 2: VRN */}
         {order.vehicle_number && (
-          <div className="text-[11px] text-[#9ca3af] mb-[5px]">🚗 {order.vehicle_number}</div>
+          <div className="text-[11px] text-text-muted mb-[5px]">🚗 {order.vehicle_number}</div>
         )}
 
         {/* Row 3: Parts */}
-        <div className="text-[12px] text-[#9ca3af] mb-[10px] truncate">{parts}</div>
+        <div className="text-[12px] text-text-muted mb-[10px] truncate">{parts}</div>
 
         <div
           className="rounded-[14px] px-[12px] py-[10px] mb-[10px]"
-          style={{ background: "#101214", border: "1px solid #252830" }}
+          style={{ background: "rgb(var(--color-surface-3))", border: "1px solid rgb(var(--color-border))" }}
         >
-          <div className="text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[8px]">Customer Details</div>
+          <div className="text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[8px]">Customer Details</div>
           <div className="space-y-[6px]">
             <CustomerInfoRow icon={UserRound} value={customer?.name || "Name not provided"} />
             <CustomerInfoRow icon={Phone} value={customer?.phone || "Phone not provided"} />
@@ -273,20 +273,20 @@ function OrderCard({ order, onRefresh }) {
             <s.icon size={11} />
             {s.label}
           </span>
-          <span className="ml-auto text-[10px] text-[#9ca3af]">{time}</span>
+          <span className="ml-auto text-[10px] text-text-muted">{time}</span>
         </div>
       </div>
 
       {/* ── Tracking timeline (only for non-rejected orders) ────────────── */}
       {!isRejected && (
         <div className="px-[14px] pb-[12px]"
-             style={{ borderTop: "1px solid #1c1e22" }}>
+             style={{ borderTop: "1px solid rgb(var(--color-surface-2))" }}>
           <div className="flex items-center mt-[12px]">
             {TIMELINE_STEPS.map((step, idx) => {
               const stepDone   = currentStep > step_index(step.key)
               const stepActive = currentStep === step_index(step.key)
               const Icon       = step.icon
-              const lineColor  = stepDone ? "#f4a623" : "#252830"
+              const lineColor  = stepDone ? "#f4a623" : "rgb(var(--color-border))"
 
               return (
                 <div key={step.key} className="flex items-center flex-1 last:flex-none">
@@ -296,14 +296,14 @@ function OrderCard({ order, onRefresh }) {
                          style={{
                            background: stepDone || stepActive
                              ? (stepDone ? "#f4a623" : "rgba(244,166,35,0.2)")
-                             : "#1c1e22",
-                           border: `2px solid ${stepDone ? "#f4a623" : stepActive ? "#f4a623" : "#252830"}`,
+                             : "rgb(var(--color-surface-2))",
+                           border: `2px solid ${stepDone ? "#f4a623" : stepActive ? "#f4a623" : "rgb(var(--color-border))"}`,
                          }}>
                       <Icon size={11}
-                            color={stepDone ? "#0c0d0f" : stepActive ? "#f4a623" : "#94a3b8"} />
+                            color={stepDone ? "rgb(var(--color-bg))" : stepActive ? "#f4a623" : "rgb(var(--color-text-faint))"} />
                     </div>
                     <span className="text-[9px] font-semibold text-center leading-tight whitespace-nowrap"
-                          style={{ color: stepDone || stepActive ? "#f4a623" : "#94a3b8" }}>
+                          style={{ color: stepDone || stepActive ? "#f4a623" : "rgb(var(--color-text-faint))" }}>
                       {step.label}
                     </span>
                   </div>
@@ -363,7 +363,7 @@ function CustomerInfoRow({ icon: Icon, value, multiline = false }) {
   return (
     <div className={`flex gap-[8px] ${multiline ? "items-start" : "items-center"}`}>
       <Icon size={12} className="text-accent flex-shrink-0 mt-[2px]" />
-      <span className={`text-[11px] text-[#d1d5db] ${multiline ? "leading-[1.4]" : ""}`}>
+      <span className={`text-[11px] text-text ${multiline ? "leading-[1.4]" : ""}`}>
         {value}
       </span>
     </div>

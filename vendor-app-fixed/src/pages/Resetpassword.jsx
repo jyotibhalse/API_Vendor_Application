@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate, useLocation, Link } from "react-router-dom"
 import api from "../api/axios"
+import PasswordField from "../components/ui/PasswordField"
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -39,7 +40,7 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 text-center">
         <div className="text-5xl mb-4">⚠️</div>
-        <p className="text-white font-semibold mb-4">Session expired or invalid.</p>
+        <p className="text-text font-semibold mb-4">Session expired or invalid.</p>
         <Link to="/forgot-password" className="text-accent font-bold">Start over →</Link>
       </div>
     )
@@ -48,7 +49,7 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen bg-bg flex flex-col justify-center px-6">
       {/* Back */}
-      <Link to="/verify-otp" className="text-[#9ca3af] text-[13px] mb-10 flex items-center gap-1">
+      <Link to="/verify-otp" className="text-text-muted text-[13px] mb-10 flex items-center gap-1">
         ← Back
       </Link>
 
@@ -58,8 +59,8 @@ export default function ResetPassword() {
         <span className="text-2xl">🔒</span>
       </div>
 
-      <h1 className="font-syne font-extrabold text-[26px] text-white mb-2">New Password</h1>
-      <p className="text-[13px] text-[#9ca3af] mb-8">
+      <h1 className="font-syne font-extrabold text-[26px] text-text mb-2">New Password</h1>
+      <p className="text-[13px] text-text-muted mb-8">
         Create a new password for<br />
         <span className="text-accent font-semibold">{email}</span>
       </p>
@@ -80,34 +81,25 @@ export default function ResetPassword() {
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[5px]">New Password</label>
-          <input
-            type="password"
+          <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[5px]">New Password</label>
+          <PasswordField
             placeholder="Min 6 characters"
             value={password}
             onChange={e => setPassword(e.target.value)}
             required
-            className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none"
-            style={{ border: "1px solid #252830" }}
-            onFocus={e => e.target.style.borderColor = "#f4a623"}
-            onBlur={e => e.target.style.borderColor = "#252830"}
+            autoComplete="new-password"
           />
         </div>
 
         <div>
-          <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[5px]">Confirm Password</label>
-          <input
-            type="password"
+          <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[5px]">Confirm Password</label>
+          <PasswordField
             placeholder="Repeat password"
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
             required
-            className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none"
-            style={{
-              border: confirm && confirm !== password ? "1px solid #ef4444" : "1px solid #252830"
-            }}
-            onFocus={e => e.target.style.borderColor = confirm !== password ? "#ef4444" : "#f4a623"}
-            onBlur={e => e.target.style.borderColor = confirm !== password ? "#ef4444" : "#252830"}
+            autoComplete="new-password"
+            invalid={Boolean(confirm && confirm !== password)}
           />
           {confirm && confirm !== password && (
             <p className="text-[11px] text-red-400 mt-1">Passwords don't match</p>
@@ -117,7 +109,7 @@ export default function ResetPassword() {
         <button
           type="submit"
           disabled={loading || success}
-          className="w-full bg-accent text-black font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity mt-1"
+          className="w-full bg-accent text-on-accent font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity mt-1"
           style={{ opacity: loading || success ? 0.7 : 1 }}
         >
           {loading ? "Resetting..." : "Reset Password"}

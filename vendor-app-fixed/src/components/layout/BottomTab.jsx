@@ -10,7 +10,7 @@ const TABS = [
 
 export default function BottomTab({ kotCount = 0 }) {
   return (
-    <div className="absolute bottom-0 w-full bg-surface border-t border-[#1e2024] flex items-stretch px-1 pb-4"
+    <div className="absolute bottom-0 w-full bg-surface border-t border-border flex items-stretch px-1 pb-4"
          style={{ height: "82px" }}>
       {TABS.map((tab) => (
         <NavLink
@@ -19,7 +19,7 @@ export default function BottomTab({ kotCount = 0 }) {
           end={tab.to === "/"}
           className={({ isActive }) =>
             `flex-1 flex flex-col items-center justify-center gap-1 rounded-xl pt-2 cursor-pointer transition-all relative
-             ${isActive ? "text-accent" : "text-[#9ca3af]"}`
+             ${isActive ? "text-accent" : "text-text-muted"}`
           }
         >
           {({ isActive }) => (
@@ -27,7 +27,7 @@ export default function BottomTab({ kotCount = 0 }) {
               <span className={`text-[22px] transition-transform ${isActive ? "scale-110" : ""}`}>
                 {tab.icon}
               </span>
-              <span className={`text-[10px] font-medium tracking-wide ${isActive ? "text-accent" : "text-[#9ca3af]"}`}>
+              <span className={`text-[10px] font-medium tracking-wide ${isActive ? "text-accent" : "text-text-muted"}`}>
                 {tab.label}
               </span>
               {tab.badge && kotCount > 0 && (

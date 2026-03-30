@@ -109,11 +109,11 @@ export default function CustomerOrders() {
     <div className="flex flex-col h-full bg-bg animate-fadeUp">
       <div
         className="px-5 pt-4 pb-3 flex-shrink-0 flex items-center justify-between"
-        style={{ borderBottom: "1px solid #252830" }}
+        style={{ borderBottom: "1px solid rgb(var(--color-border))" }}
       >
         <div>
-          <div className="font-syne font-extrabold text-[22px] text-white">My Orders</div>
-          <div className="text-[12px] text-[#9ca3af]">
+          <div className="font-syne font-extrabold text-[22px] text-text">My Orders</div>
+          <div className="text-[12px] text-text-muted">
             {orders.length} result{orders.length !== 1 ? "s" : ""}
           </div>
         </div>
@@ -140,19 +140,19 @@ export default function CustomerOrders() {
       <div className="px-5 pt-3 pb-1 flex-shrink-0">
         <div
           className="flex items-center gap-2 px-3 rounded-xl"
-          style={{ background: "#141618", border: "1px solid #252830" }}
+          style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
         >
-          <Search size={14} className="text-[#9ca3af] flex-shrink-0" />
+          <Search size={14} className="text-text-muted flex-shrink-0" />
           <input
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by order ID or vehicle number..."
-            className="flex-1 bg-transparent py-[9px] text-[12px] text-white placeholder-[#94a3b8] outline-none"
+            className="flex-1 bg-transparent py-[9px] text-[12px] text-text placeholder:text-text-faint outline-none"
           />
           {search && (
             <button type="button" onClick={() => setSearch("")}>
-              <X size={13} className="text-[#9ca3af] hover:text-white" />
+              <X size={13} className="text-text-muted hover:text-text" />
             </button>
           )}
         </div>
@@ -166,8 +166,8 @@ export default function CustomerOrders() {
             onClick={() => setActiveFilter(filter)}
             className={`px-[12px] py-[5px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-all ${
               activeFilter === filter
-                ? "bg-accent text-black border-accent"
-                : "bg-surface2 text-[#9ca3af] border-[#252830]"
+                ? "bg-accent text-on-accent border-accent"
+                : "bg-surface2 text-text-muted border-border"
             }`}
           >
             {filter}
@@ -177,17 +177,17 @@ export default function CustomerOrders() {
 
       <div className="flex-1 overflow-y-auto px-5 pb-5">
         {loading ? (
-          <div className="text-[13px] text-[#9ca3af] text-center mt-10">Loading orders...</div>
+          <div className="text-[13px] text-text-muted text-center mt-10">Loading orders...</div>
         ) : orders.length === 0 ? (
           <div className="text-center mt-16">
             <div
-              className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-[#9ca3af]"
-              style={{ background: "#141618", border: "1px solid #252830" }}
+              className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-text-muted"
+              style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
             >
               <Store size={20} />
             </div>
-            <div className="text-[15px] font-semibold text-white">No orders yet</div>
-            <div className="text-[12px] text-[#9ca3af] mt-1">Placed KOT orders will appear here with live status updates.</div>
+            <div className="text-[15px] font-semibold text-text">No orders yet</div>
+            <div className="text-[12px] text-text-muted mt-1">Placed KOT orders will appear here with live status updates.</div>
           </div>
         ) : (
           orders.map((order) => <CustomerOrderCard key={order.id} order={order} />)
@@ -207,7 +207,7 @@ function CustomerOrderCard({ order }) {
   const isDelivered = order.status === "delivered"
 
   return (
-    <div className="rounded-2xl mb-[10px] overflow-hidden" style={{ background: "#141618", border: "1px solid #252830" }}>
+    <div className="rounded-2xl mb-[10px] overflow-hidden" style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
       <div className="p-[14px]">
         <div className="flex justify-between items-start mb-[6px] gap-3">
           <div>
@@ -219,18 +219,18 @@ function CustomerOrderCard({ order }) {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[12px] text-[#9ca3af] mt-[4px]">
+            <div className="flex items-center gap-2 text-[12px] text-text-muted mt-[4px]">
               <Store size={12} />
               <span>{shopName}</span>
             </div>
           </div>
-          <div className="font-syne font-extrabold text-[16px] text-white">
+          <div className="font-syne font-extrabold text-[16px] text-text">
             Rs {Number(order.total_amount || 0).toLocaleString("en-IN")}
           </div>
         </div>
 
         {order.vehicle_number && (
-          <div className="text-[11px] text-[#9ca3af] mb-[8px]">Vehicle: {order.vehicle_number}</div>
+          <div className="text-[11px] text-text-muted mb-[8px]">Vehicle: {order.vehicle_number}</div>
         )}
 
         <div className="space-y-2 mb-[12px]">
@@ -238,13 +238,13 @@ function CustomerOrderCard({ order }) {
             <div
               key={`${order.id}-${item.variant_id}-${index}`}
               className="rounded-[14px] px-3 py-3 flex items-center justify-between"
-              style={{ background: "#1c1e22", border: "1px solid #252830" }}
+              style={{ background: "rgb(var(--color-surface-2))", border: "1px solid rgb(var(--color-border))" }}
             >
               <div className="min-w-0 pr-3">
-                <div className="text-[12px] text-white font-semibold truncate">
+                <div className="text-[12px] text-text font-semibold truncate">
                   {item.vehicle_model || `Variant ${item.variant_id}`}
                 </div>
-                <div className="text-[10px] text-[#9ca3af] mt-[2px]">Unit: Rs {Number(item.price || 0).toLocaleString("en-IN")}</div>
+                <div className="text-[10px] text-text-muted mt-[2px]">Unit: Rs {Number(item.price || 0).toLocaleString("en-IN")}</div>
               </div>
               <div className="text-[12px] font-bold text-accent">x {item.quantity}</div>
             </div>
@@ -259,12 +259,12 @@ function CustomerOrderCard({ order }) {
             <status.icon size={11} />
             {status.label}
           </span>
-          <span className="ml-auto text-[10px] text-[#9ca3af]">{time}</span>
+          <span className="ml-auto text-[10px] text-text-muted">{time}</span>
         </div>
       </div>
 
       {!isRejected && (
-        <div className="px-[14px] pb-[12px]" style={{ borderTop: "1px solid #1c1e22" }}>
+        <div className="px-[14px] pb-[12px]" style={{ borderTop: "1px solid rgb(var(--color-surface-2))" }}>
           <div className="flex items-center mt-[12px]">
             {TIMELINE_STEPS.map((step, index) => {
               const done = status.step > stepIndex(step.key)
@@ -277,15 +277,15 @@ function CustomerOrderCard({ order }) {
                     <div
                       className="w-[26px] h-[26px] rounded-full flex items-center justify-center transition-all"
                       style={{
-                        background: done || active ? (done ? "#f4a623" : "rgba(244,166,35,0.2)") : "#1c1e22",
-                        border: `2px solid ${done || active ? "#f4a623" : "#252830"}`,
+                        background: done || active ? (done ? "#f4a623" : "rgba(244,166,35,0.2)") : "rgb(var(--color-surface-2))",
+                        border: `2px solid ${done || active ? "#f4a623" : "rgb(var(--color-border))"}`,
                       }}
                     >
-                      <Icon size={11} color={done ? "#0c0d0f" : active ? "#f4a623" : "#94a3b8"} />
+                      <Icon size={11} color={done ? "rgb(var(--color-bg))" : active ? "#f4a623" : "rgb(var(--color-text-faint))"} />
                     </div>
                     <span
                       className="text-[9px] font-semibold text-center leading-tight whitespace-nowrap"
-                      style={{ color: done || active ? "#f4a623" : "#94a3b8" }}
+                      style={{ color: done || active ? "#f4a623" : "rgb(var(--color-text-faint))" }}
                     >
                       {step.label}
                     </span>
@@ -293,7 +293,7 @@ function CustomerOrderCard({ order }) {
                   {index < TIMELINE_STEPS.length - 1 && (
                     <div
                       className="flex-1 h-[2px] mx-[4px] mb-[14px] rounded-full transition-all"
-                      style={{ background: done ? "#f4a623" : "#252830" }}
+                      style={{ background: done ? "#f4a623" : "rgb(var(--color-border))" }}
                     />
                   )}
                 </div>

@@ -243,7 +243,7 @@ export default function KOT() {
   return (
     <div className="flex flex-col h-full bg-bg animate-fadeUp">
       <div className="px-5 pt-4 pb-3 flex-shrink-0">
-        <div className="font-syne font-extrabold text-[22px] text-white">KOT Orders</div>
+        <div className="font-syne font-extrabold text-[22px] text-text">KOT Orders</div>
         <div className="flex flex-wrap items-center gap-2 mt-[4px]">
           {orders.length > 0 ? (
             <div
@@ -277,11 +277,11 @@ export default function KOT() {
 
       <div className="flex-1 overflow-y-auto px-5 pb-5">
         {loading ? (
-          <div className="text-[13px] text-[#9ca3af] text-center mt-10">Loading orders...</div>
+          <div className="text-[13px] text-text-muted text-center mt-10">Loading orders...</div>
         ) : orders.length === 0 ? (
           <div className="text-center mt-16">
-            <div className="text-[15px] font-semibold text-white">All caught up!</div>
-            <div className="text-[12px] text-[#9ca3af] mt-1">No pending orders right now</div>
+            <div className="text-[15px] font-semibold text-text">All caught up!</div>
+            <div className="text-[12px] text-text-muted mt-1">No pending orders right now</div>
           </div>
         ) : (
           orders.map((order, index) => (
@@ -289,7 +289,7 @@ export default function KOT() {
           ))
         )}
         {orders.length > 0 && (
-          <div className="text-center text-[11px] text-[#9ca3af] py-2">
+          <div className="text-center text-[11px] text-text-muted py-2">
             Scroll for more
           </div>
         )}
@@ -309,8 +309,8 @@ function KOTCard({ order, onAction }) {
     <div
       className="rounded-[20px] overflow-hidden mb-3"
       style={{
-        background: "#141618",
-        border: isUrgent ? "1px solid rgba(239,68,68,0.4)" : "1px solid #252830",
+        background: "rgb(var(--color-surface))",
+        border: isUrgent ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgb(var(--color-border))",
       }}
     >
       <div className="p-[14px] pb-[10px]">
@@ -320,30 +320,30 @@ function KOTCard({ order, onAction }) {
               URGENT
             </span>
           ) : (
-            <span className="text-[10px] font-bold px-2 py-[2px] rounded bg-surface2 text-[#9ca3af]">
+            <span className="text-[10px] font-bold px-2 py-[2px] rounded bg-surface2 text-text-muted">
               STANDARD
             </span>
           )}
-          <span className="ml-auto text-[10px] text-[#9ca3af] bg-surface2 px-2 py-[2px] rounded">
+          <span className="ml-auto text-[10px] text-text-muted bg-surface2 px-2 py-[2px] rounded">
             {elapsed}
           </span>
         </div>
 
         <div className="flex items-center justify-between mb-[6px]">
-          <div className="font-syne font-extrabold text-[18px] text-white tracking-[1px]">
+          <div className="font-syne font-extrabold text-[18px] text-text tracking-[1px]">
             {order.vehicle_number || "VRN N/A"}
           </div>
-          <div className="text-[11px] text-[#9ca3af]">#{String(order.id).padStart(4, "0")}</div>
+          <div className="text-[11px] text-text-muted">#{String(order.id).padStart(4, "0")}</div>
         </div>
 
         <div className="flex items-center gap-[6px] mb-[10px]">
           <span className="text-[11px] font-bold px-[8px] py-[2px] rounded-full bg-[rgba(59,130,246,0.15)] text-blue-400">
             Courier
           </span>
-          <span className="text-[11px] text-[#9ca3af] ml-[2px]">
+          <span className="text-[11px] text-text-muted ml-[2px]">
             {isUrgent ? "High Priority" : "Normal"}
           </span>
-          <span className="ml-auto font-syne font-bold text-[14px] text-white">
+          <span className="ml-auto font-syne font-bold text-[14px] text-text">
             Rs {order.total_amount?.toLocaleString() || "-"}
           </span>
         </div>
@@ -354,24 +354,24 @@ function KOTCard({ order, onAction }) {
               <div
                 key={`${order.id}-${item.variant_id}-${index}`}
                 className="flex justify-between items-center px-[14px] py-[10px]"
-                style={{ borderBottom: index < order.items.length - 1 ? "1px solid #252830" : "none" }}
+                style={{ borderBottom: index < order.items.length - 1 ? "1px solid rgb(var(--color-border))" : "none" }}
               >
-                <div className="text-[12px] text-[#9ca3af]">
+                <div className="text-[12px] text-text-muted">
                   {item.vehicle_model || `Part #${item.variant_id}`}
                 </div>
-                <div className="text-[12px] font-bold text-white">x {item.quantity}</div>
+                <div className="text-[12px] font-bold text-text">x {item.quantity}</div>
               </div>
             ))
           ) : (
-            <div className="px-[14px] py-[10px] text-[12px] text-[#9ca3af]">No items</div>
+            <div className="px-[14px] py-[10px] text-[12px] text-text-muted">No items</div>
           )}
         </div>
 
         <div
           className="mt-[10px] rounded-[12px] px-[12px] py-[10px]"
-          style={{ background: "#101214", border: "1px solid #252830" }}
+          style={{ background: "rgb(var(--color-surface-3))", border: "1px solid rgb(var(--color-border))" }}
         >
-          <div className="text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[8px]">Customer Details</div>
+          <div className="text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[8px]">Customer Details</div>
           <div className="space-y-[6px]">
             <CustomerInfoRow icon={UserRound} value={customer?.name || "Name not provided"} />
             <CustomerInfoRow icon={Phone} value={customer?.phone || "Phone not provided"} />
@@ -381,10 +381,10 @@ function KOTCard({ order, onAction }) {
         </div>
       </div>
 
-      <div className="flex" style={{ borderTop: "1px solid #252830" }}>
+      <div className="flex" style={{ borderTop: "1px solid rgb(var(--color-border))" }}>
         <button
           onClick={() => onAction(order.id, "reject")}
-          className="flex-1 py-[14px] text-center text-[13px] font-bold text-[#9ca3af] bg-surface2 transition-opacity hover:opacity-80"
+          className="flex-1 py-[14px] text-center text-[13px] font-bold text-text-muted bg-surface2 transition-opacity hover:opacity-80"
         >
           Reject
         </button>
@@ -434,7 +434,7 @@ function CustomerInfoRow({ icon: Icon, value, multiline = false }) {
   return (
     <div className={`flex gap-[8px] ${multiline ? "items-start" : "items-center"}`}>
       <Icon size={12} className="text-accent flex-shrink-0 mt-[2px]" />
-      <span className={`text-[11px] text-[#d1d5db] ${multiline ? "leading-[1.4]" : ""}`}>
+      <span className={`text-[11px] text-text ${multiline ? "leading-[1.4]" : ""}`}>
         {value}
       </span>
     </div>

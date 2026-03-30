@@ -26,7 +26,7 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen bg-bg flex flex-col justify-center px-6">
       {/* Back */}
-      <Link to="/login" className="text-[#9ca3af] text-[13px] mb-10 flex items-center gap-1">
+      <Link to="/login" className="text-text-muted text-[13px] mb-10 flex items-center gap-1">
         ← Back to login
       </Link>
 
@@ -36,8 +36,8 @@ export default function ForgotPassword() {
         <span className="text-2xl">📧</span>
       </div>
 
-      <h1 className="font-syne font-extrabold text-[26px] text-white mb-2">Forgot Password?</h1>
-      <p className="text-[13px] text-[#9ca3af] mb-8">
+      <h1 className="font-syne font-extrabold text-[26px] text-text mb-2">Forgot Password?</h1>
+      <p className="text-[13px] text-text-muted mb-8">
         Enter your registered email and we'll send you a 6-digit OTP.
       </p>
 
@@ -50,24 +50,24 @@ export default function ForgotPassword() {
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[5px]">Email Address</label>
+          <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[5px]">Email Address</label>
           <input
             type="email"
             placeholder="vendor@example.com"
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none"
-            style={{ border: "1px solid #252830" }}
+            className="w-full bg-surface2 text-text text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none"
+            style={{ border: "1px solid rgb(var(--color-border))" }}
             onFocus={e => e.target.style.borderColor = "#f4a623"}
-            onBlur={e => e.target.style.borderColor = "#252830"}
+            onBlur={e => e.target.style.borderColor = "rgb(var(--color-border))"}
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-accent text-black font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity"
+          className="w-full bg-accent text-on-accent font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity"
           style={{ opacity: loading ? 0.7 : 1 }}
         >
           {loading ? "Sending OTP..." : "Send OTP"}

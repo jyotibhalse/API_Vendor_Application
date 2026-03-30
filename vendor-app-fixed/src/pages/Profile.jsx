@@ -46,12 +46,12 @@ export default function Profile() {
 
       {/* Avatar + name */}
       <div className="flex items-center gap-[14px] px-5 pt-5 pb-5 flex-shrink-0">
-        <div className="w-[72px] h-[72px] rounded-[22px] flex items-center justify-center font-syne font-extrabold text-[24px] text-black flex-shrink-0"
+        <div className="w-[72px] h-[72px] rounded-[22px] flex items-center justify-center font-syne font-extrabold text-[24px] text-on-accent flex-shrink-0"
              style={{ background: "linear-gradient(135deg,#f4a623,#e8580c)" }}>
           {initials}
         </div>
         <div>
-          <div className="font-syne font-extrabold text-[18px] text-white">
+          <div className="font-syne font-extrabold text-[18px] text-text">
             {form.shop_name || "Your Shop"}
           </div>
           <div className="text-[12px] text-accent mt-[2px]">Vendor Account</div>
@@ -69,34 +69,34 @@ export default function Profile() {
           { key: "phone",     label: "Phone Number",   placeholder: "+91 98765 43210" },
         ].map(f => (
           <div key={f.key}>
-            <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[5px]">{f.label}</label>
+            <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[5px]">{f.label}</label>
             <input
               type="text"
               placeholder={f.placeholder}
               value={form[f.key]}
               onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-              className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none"
-              style={{ border: "1px solid #252830" }}
+              className="w-full bg-surface2 text-text text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none"
+              style={{ border: "1px solid rgb(var(--color-border))" }}
               onFocus={e => e.target.style.borderColor = "#f4a623"}
-              onBlur={e => e.target.style.borderColor = "#252830"}
+              onBlur={e => e.target.style.borderColor = "rgb(var(--color-border))"}
             />
           </div>
         ))}
 
         <div>
-          <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[5px]">Email</label>
+          <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[5px]">Email</label>
           <input
             type="email"
             value={vendor?.email || ""}
             disabled
-            className="w-full text-[#9ca3af] text-[13px] px-[14px] py-[11px] rounded-[12px] cursor-not-allowed"
-            style={{ background: "#1a1a1a", border: "1px solid #252830" }}
+            className="w-full text-text-muted text-[13px] px-[14px] py-[11px] rounded-[12px] cursor-not-allowed"
+            style={{ background: "rgb(var(--color-surface-2))", border: "1px solid rgb(var(--color-border))" }}
           />
         </div>
 
         <button
           onClick={handleSave}
-          className="w-full py-[14px] rounded-[14px] font-bold text-[14px] text-black transition-all"
+          className="w-full py-[14px] rounded-[14px] font-bold text-[14px] text-on-accent transition-all"
           style={{ background: saved ? "#22c55e" : "#f4a623" }}
         >
           {saved ? "✓ Saved!" : "Save Changes"}
@@ -105,14 +105,14 @@ export default function Profile() {
 
       {/* Menu items */}
       <div className="px-5 mt-6 mb-2">
-        <div className="text-[10px] uppercase tracking-[1px] text-[#9ca3af] mb-3">Settings</div>
-        <div className="rounded-2xl overflow-hidden" style={{ background: "#141618", border: "1px solid #252830" }}>
+        <div className="text-[10px] uppercase tracking-[1px] text-text-muted mb-3">Settings</div>
+        <div className="rounded-2xl overflow-hidden" style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
           {MENU_ITEMS.map((item, i) => (
             <div key={i} className="flex items-center gap-3 px-4 py-[14px] cursor-pointer hover:bg-surface2 transition-all"
-                 style={{ borderBottom: i < MENU_ITEMS.length - 1 ? "1px solid #252830" : "none" }}>
+                 style={{ borderBottom: i < MENU_ITEMS.length - 1 ? "1px solid rgb(var(--color-border))" : "none" }}>
               <span className="text-[18px]">{item.icon}</span>
-              <span className="text-[13px] text-[#9ca3af]">{item.label}</span>
-              <span className="ml-auto text-[#9ca3af] text-[16px]">›</span>
+              <span className="text-[13px] text-text-muted">{item.label}</span>
+              <span className="ml-auto text-text-muted text-[16px]">›</span>
             </div>
           ))}
         </div>

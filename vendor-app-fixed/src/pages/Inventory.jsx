@@ -16,14 +16,14 @@
 //         src={src.startsWith("http") ? src : `${BASE_URL}${src}`}
 //         onError={() => setErr(true)}
 //         className="object-cover flex-shrink-0"
-//         style={{ width: size, height: size, borderRadius: rounded, border: "1px solid #252830" }}
+//         style={{ width: size, height: size, borderRadius: rounded, border: "1px solid rgb(var(--color-border))" }}
 //       />
 //     )
 //   }
 //   return (
 //     <div className="flex items-center justify-center flex-shrink-0"
-//          style={{ width: size, height: size, borderRadius: rounded, background: "#1c1e22", border: "1px solid #252830" }}>
-//       <Camera size={size * 0.38} className="text-[#94a3b8]" />
+//          style={{ width: size, height: size, borderRadius: rounded, background: "rgb(var(--color-surface-2))", border: "1px solid rgb(var(--color-border))" }}>
+//       <Camera size={size * 0.38} className="text-text-faint" />
 //     </div>
 //   )
 // }
@@ -57,14 +57,14 @@
 //         ? <img src={preview} onError={() => setErr(true)} className="object-cover w-full h-full"
 //                style={{ borderRadius: rounded, border: "1px solid #f4a623" }} />
 //         : <div className="w-full h-full flex items-center justify-center"
-//                style={{ borderRadius: rounded, background: "#1c1e22", border: "2px dashed #94a3b8" }}>
-//             <Camera size={size * 0.38} className="text-[#94a3b8] group-hover:text-accent transition-colors" />
+//                style={{ borderRadius: rounded, background: "rgb(var(--color-surface-2))", border: "2px dashed rgb(var(--color-text-faint))" }}>
+//             <Camera size={size * 0.38} className="text-text-faint group-hover:text-accent transition-colors" />
 //           </div>
 //       }
 //       {/* overlay hint */}
 //       <div className="absolute inset-0 rounded-[inherit] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
 //            style={{ background: "rgba(0,0,0,0.55)", borderRadius: rounded }}>
-//         <ImagePlus size={size * 0.32} className="text-white" />
+//         <ImagePlus size={size * 0.32} className="text-text" />
 //       </div>
 //       <input ref={ref} type="file" accept="image/*" className="hidden" onChange={handlePick} />
 //     </button>
@@ -185,25 +185,25 @@
 
 //       {/* Header */}
 //       <div className="px-5 pt-4 pb-3 flex-shrink-0 flex items-center justify-between"
-//            style={{ borderBottom: "1px solid #252830" }}>
+//            style={{ borderBottom: "1px solid rgb(var(--color-border))" }}>
 //         <div>
-//           <div className="font-syne font-extrabold text-[22px] text-white">Inventory</div>
-//           <div className="text-[12px] text-[#9ca3af]">{inventory.length} brands</div>
+//           <div className="font-syne font-extrabold text-[22px] text-text">Inventory</div>
+//           <div className="text-[12px] text-text-muted">{inventory.length} brands</div>
 //         </div>
 //       </div>
 
 //       {/* Search bar */}
 //       <div className="mx-5 mt-3 mb-0 flex items-center gap-[10px] px-[14px] py-[11px] rounded-[14px]"
-//            style={{ background: "#141618", border: "1px solid #252830" }}>
-//         <Search size={16} className="text-[#9ca3af]" />
+//            style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
+//         <Search size={16} className="text-text-muted" />
 //         <input
 //           type="text"
 //           placeholder="Search brands, products, models..."
 //           value={searchQuery}
 //           onChange={e => setSearchQuery(e.target.value)}
-//           className="flex-1 bg-transparent outline-none text-white text-[13px] placeholder-[#9ca3af]"
+//           className="flex-1 bg-transparent outline-none text-text text-[13px] placeholder:text-text-muted"
 //         />
-//         {searchQuery && <X size={14} className="text-[#9ca3af] cursor-pointer" onClick={() => setSearchQuery("")} />}
+//         {searchQuery && <X size={14} className="text-text-muted cursor-pointer" onClick={() => setSearchQuery("")} />}
 //       </div>
 
 //       {/* Category filter chips */}
@@ -212,8 +212,8 @@
 //           <button key={name} onClick={() => setActiveFilter(name)}
 //             className={`px-[12px] py-[5px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-all
 //               ${activeFilter === name
-//                 ? "bg-accent text-black border-accent"
-//                 : "bg-surface2 text-[#9ca3af] border-[#252830]"}`}>
+//                 ? "bg-accent text-on-accent border-accent"
+//                 : "bg-surface2 text-text-muted border-border"}`}>
 //             {name}
 //           </button>
 //         ))}
@@ -224,8 +224,8 @@
 //         {filteredInventory.length === 0 ? (
 //           <div className="text-center mt-16">
 //             <div className="text-5xl mb-4">📦</div>
-//             <div className="text-[15px] font-semibold text-white">No inventory yet</div>
-//             <div className="text-[12px] text-[#9ca3af] mt-1">Tap + to add products</div>
+//             <div className="text-[15px] font-semibold text-text">No inventory yet</div>
+//             <div className="text-[12px] text-text-muted mt-1">Tap + to add products</div>
 //           </div>
 //         ) : (
 //           filteredInventory.map(brand => {
@@ -233,7 +233,7 @@
 //             const brandThumb    = getBrandThumb(brand)
 //             return (
 //               <div key={brand.brand_id} className="mb-3 rounded-2xl overflow-hidden"
-//                    style={{ background: "#141618", border: "1px solid #252830" }}>
+//                    style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
 
 //                 {/* Brand header row */}
 //                 <div className="flex items-center gap-3 p-4 cursor-pointer"
@@ -243,43 +243,43 @@
 //                   <Thumb src={brandThumb} size={46} rounded={12} />
 
 //                   <div className="flex-1 min-w-0">
-//                     <h2 className="font-syne font-bold text-[16px] text-white">{brand.brand_name}</h2>
-//                     <p className="text-[11px] text-[#9ca3af] mt-[2px] truncate">
+//                     <h2 className="font-syne font-bold text-[16px] text-text">{brand.brand_name}</h2>
+//                     <p className="text-[11px] text-text-muted mt-[2px] truncate">
 //                       {brand.products.slice(0,3).map(p => p.product_name).join(", ")}
 //                       {brand.products.length > 3 && " + more"}
 //                     </p>
-//                     <p className="text-[10px] text-[#9ca3af] mt-[3px]">
+//                     <p className="text-[10px] text-text-muted mt-[3px]">
 //                       {brand.products.length} products · {totalVariants} variants
 //                     </p>
 //                   </div>
 
 //                   {isExpanded(brand.brand_id)
-//                     ? <ChevronUp size={18} className="text-[#9ca3af] flex-shrink-0" />
-//                     : <ChevronDown size={18} className="text-[#9ca3af] flex-shrink-0" />}
+//                     ? <ChevronUp size={18} className="text-text-muted flex-shrink-0" />
+//                     : <ChevronDown size={18} className="text-text-muted flex-shrink-0" />}
 //                 </div>
 
 //                 {/* Expanded products */}
 //                 {isExpanded(brand.brand_id) && (
-//                   <div className="px-4 pb-4 space-y-4" style={{ borderTop: "1px solid #252830" }}>
+//                   <div className="px-4 pb-4 space-y-4" style={{ borderTop: "1px solid rgb(var(--color-border))" }}>
 //                     {brand.products.map(product => (
 //                       <div key={product.product_id} className="pt-3">
 //                         {/* Product row with its own thumbnail */}
 //                         <div className="flex items-center gap-[10px] mb-2">
 //                           <Thumb src={product.image_url} size={36} rounded={10} />
-//                           <h3 className="text-[13px] font-semibold text-[#9ca3af]">{product.product_name}</h3>
+//                           <h3 className="text-[13px] font-semibold text-text-muted">{product.product_name}</h3>
 //                         </div>
 
 //                         <div className="space-y-2">
 //                           {product.variants.map(variant => (
 //                             <div key={variant.id} className="flex items-center gap-3 p-3 rounded-xl"
-//                                  style={{ background: "#1c1e22", border: "1px solid #252830" }}>
+//                                  style={{ background: "rgb(var(--color-surface-2))", border: "1px solid rgb(var(--color-border))" }}>
 
 //                               {/* Variant thumbnail */}
 //                               <Thumb src={variant.image_url} size={40} rounded={10} />
 
 //                               <div className="flex-1 min-w-0">
-//                                 <p className="text-[11px] text-[#9ca3af]">{variant.vehicle_model}</p>
-//                                 <p className="font-syne font-bold text-[15px] text-white mt-[2px]">₹{variant.price}</p>
+//                                 <p className="text-[11px] text-text-muted">{variant.vehicle_model}</p>
+//                                 <p className="font-syne font-bold text-[15px] text-text mt-[2px]">₹{variant.price}</p>
 //                                 {variant.stock > 10
 //                                   ? <span className="text-[10px] bg-green-500/15 text-green-400 px-2 py-[2px] rounded-full mt-1 inline-block font-bold">{variant.stock} in stock</span>
 //                                   : variant.stock > 0
@@ -289,7 +289,7 @@
 //                               </div>
 
 //                               <div className="flex gap-3 flex-shrink-0">
-//                                 <Pencil size={17} className="text-[#9ca3af] cursor-pointer hover:text-accent transition-colors"
+//                                 <Pencil size={17} className="text-text-muted cursor-pointer hover:text-accent transition-colors"
 //                                   onClick={() => {
 //                                     setEditVariant(variant)
 //                                     setEditForm({ stock: variant.stock, price: variant.price })
@@ -314,7 +314,7 @@
 //       {/* FAB */}
 //       <button
 //         onClick={() => setShowAddModal(true)}
-//         className="fixed bottom-[100px] right-5 w-[52px] h-[52px] rounded-[16px] bg-accent text-black font-bold text-[24px] flex items-center justify-center z-50 transition-transform hover:scale-105"
+//         className="fixed bottom-[100px] right-5 w-[52px] h-[52px] rounded-[16px] bg-accent text-on-accent font-bold text-[24px] flex items-center justify-center z-50 transition-transform hover:scale-105"
 //         style={{ boxShadow: "0 4px 16px rgba(244,166,35,0.4)" }}
 //       >+</button>
 
@@ -332,8 +332,8 @@
 //                 label="Product photo"
 //               />
 //               <div>
-//                 <div className="text-[12px] text-white font-semibold">Product Photo</div>
-//                 <div className="text-[10px] text-[#9ca3af] mt-[2px]">Tap to upload an image</div>
+//                 <div className="text-[12px] text-text font-semibold">Product Photo</div>
+//                 <div className="text-[10px] text-text-muted mt-[2px]">Tap to upload an image</div>
 //               </div>
 //             </div>
 
@@ -346,22 +346,22 @@
 //               { label: "Stock",         key: "stock" },
 //             ].map(f => (
 //               <div key={f.key}>
-//                 <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[4px]">{f.label}</label>
+//                 <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[4px]">{f.label}</label>
 //                 <input
 //                   type="text"
 //                   placeholder={f.label}
 //                   value={formData[f.key]}
 //                   onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
-//                   className="w-full bg-surface2 text-white text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
-//                   style={{ border: "1px solid #252830" }}
+//                   className="w-full bg-surface2 text-text text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
+//                   style={{ border: "1px solid rgb(var(--color-border))" }}
 //                   onFocus={e => e.target.style.borderColor = "#f4a623"}
-//                   onBlur={e => e.target.style.borderColor = "#252830"}
+//                   onBlur={e => e.target.style.borderColor = "rgb(var(--color-border))"}
 //                 />
 //               </div>
 //             ))}
 //           </div>
 //           <button onClick={handleAddProduct}
-//             className="w-full mt-4 bg-accent text-black font-bold py-[12px] rounded-[12px] text-[13px] hover:opacity-90 transition-opacity">
+//             className="w-full mt-4 bg-accent text-on-accent font-bold py-[12px] rounded-[12px] text-[13px] hover:opacity-90 transition-opacity">
 //             Save Product
 //           </button>
 //         </Modal>
@@ -380,8 +380,8 @@
 //               label="Variant photo"
 //             />
 //             <div>
-//               <div className="text-[12px] text-white font-semibold">Variant Photo</div>
-//               <div className="text-[10px] text-[#9ca3af] mt-[2px]">Tap to change image</div>
+//               <div className="text-[12px] text-text font-semibold">Variant Photo</div>
+//               <div className="text-[10px] text-text-muted mt-[2px]">Tap to change image</div>
 //             </div>
 //           </div>
 
@@ -391,21 +391,21 @@
 //               { label: "Price (₹)", key: "price" },
 //             ].map(f => (
 //               <div key={f.key}>
-//                 <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[4px]">{f.label}</label>
+//                 <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[4px]">{f.label}</label>
 //                 <input
 //                   type="number"
 //                   value={editForm[f.key]}
 //                   onChange={e => setEditForm({ ...editForm, [f.key]: e.target.value })}
-//                   className="w-full bg-surface2 text-white text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
-//                   style={{ border: "1px solid #252830" }}
+//                   className="w-full bg-surface2 text-text text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
+//                   style={{ border: "1px solid rgb(var(--color-border))" }}
 //                   onFocus={e => e.target.style.borderColor = "#f4a623"}
-//                   onBlur={e => e.target.style.borderColor = "#252830"}
+//                   onBlur={e => e.target.style.borderColor = "rgb(var(--color-border))"}
 //                 />
 //               </div>
 //             ))}
 //           </div>
 //           <button onClick={handleUpdateVariant}
-//             className="w-full mt-4 bg-accent text-black font-bold py-[12px] rounded-[12px] text-[13px] hover:opacity-90 transition-opacity">
+//             className="w-full mt-4 bg-accent text-on-accent font-bold py-[12px] rounded-[12px] text-[13px] hover:opacity-90 transition-opacity">
 //             Update Variant
 //           </button>
 //         </Modal>
@@ -418,11 +418,11 @@
 //   return (
 //     <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50" onClick={onClose}>
 //       <div className="w-full max-w-md p-6 rounded-t-3xl max-h-[88vh] overflow-y-auto"
-//            style={{ background: "#141618", border: "1px solid #252830" }}
+//            style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
 //            onClick={e => e.stopPropagation()}>
 //         <div className="flex justify-between items-center mb-5">
-//           <h2 className="font-syne font-bold text-[18px] text-white">{title}</h2>
-//           <X size={20} className="text-[#9ca3af] cursor-pointer hover:text-white" onClick={onClose} />
+//           <h2 className="font-syne font-bold text-[18px] text-text">{title}</h2>
+//           <X size={20} className="text-text-muted cursor-pointer hover:text-text" onClick={onClose} />
 //         </div>
 //         {children}
 //       </div>
@@ -467,14 +467,14 @@ function Thumb({ src, size = 48, rounded = 12 }) {
         src={src.startsWith("http") ? src : `${BASE_URL}${src}`}
         onError={() => setErr(true)}
         className="object-cover flex-shrink-0"
-        style={{ width: size, height: size, borderRadius: rounded, border: "1px solid #252830" }}
+        style={{ width: size, height: size, borderRadius: rounded, border: "1px solid rgb(var(--color-border))" }}
       />
     )
   }
   return (
     <div className="flex items-center justify-center flex-shrink-0"
-         style={{ width: size, height: size, borderRadius: rounded, background: "#1c1e22", border: "1px solid #252830" }}>
-      <Camera size={size * 0.38} className="text-[#94a3b8]" />
+         style={{ width: size, height: size, borderRadius: rounded, background: "rgb(var(--color-surface-2))", border: "1px solid rgb(var(--color-border))" }}>
+      <Camera size={size * 0.38} className="text-text-faint" />
     </div>
   )
 }
@@ -508,14 +508,14 @@ function UploadThumb({ src, size = 48, rounded = 12, onFile, label = "" }) {
         ? <img src={preview} onError={() => setErr(true)} className="object-cover w-full h-full"
                style={{ borderRadius: rounded, border: "1px solid #f4a623" }} />
         : <div className="w-full h-full flex items-center justify-center"
-               style={{ borderRadius: rounded, background: "#1c1e22", border: "2px dashed #94a3b8" }}>
-            <Camera size={size * 0.38} className="text-[#94a3b8] group-hover:text-accent transition-colors" />
+               style={{ borderRadius: rounded, background: "rgb(var(--color-surface-2))", border: "2px dashed rgb(var(--color-text-faint))" }}>
+            <Camera size={size * 0.38} className="text-text-faint group-hover:text-accent transition-colors" />
           </div>
       }
       {/* overlay hint */}
       <div className="absolute inset-0 rounded-[inherit] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-           style={{ background: "rgba(0,0,0,0.55)", borderRadius: rounded }}>
-        <ImagePlus size={size * 0.32} className="text-white" />
+           style={{ background: "var(--image-hover-scrim)", borderRadius: rounded }}>
+        <ImagePlus size={size * 0.32} className="text-text" />
       </div>
       <input ref={ref} type="file" accept="image/*" className="hidden" onChange={handlePick} />
     </button>
@@ -699,25 +699,25 @@ export default function Inventory() {
 
       {/* Header */}
       <div className="px-5 pt-4 pb-3 flex-shrink-0 flex items-center justify-between"
-           style={{ borderBottom: "1px solid #252830" }}>
+           style={{ borderBottom: "1px solid rgb(var(--color-border))" }}>
         <div>
-          <div className="font-syne font-extrabold text-[22px] text-white">Inventory</div>
-          <div className="text-[12px] text-[#9ca3af]">{inventory.length} brands</div>
+          <div className="font-syne font-extrabold text-[22px] text-text">Inventory</div>
+          <div className="text-[12px] text-text-muted">{inventory.length} brands</div>
         </div>
       </div>
 
       {/* Search bar */}
       <div className="mx-5 mt-3 mb-0 flex items-center gap-[10px] px-[14px] py-[11px] rounded-[14px]"
-           style={{ background: "#141618", border: "1px solid #252830" }}>
-        <Search size={16} className="text-[#9ca3af]" />
+           style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
+        <Search size={16} className="text-text-muted" />
         <input
           type="text"
           placeholder="Search brands, products, models..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="flex-1 bg-transparent outline-none text-white text-[13px] placeholder-[#9ca3af]"
+          className="flex-1 bg-transparent outline-none text-text text-[13px] placeholder:text-text-muted"
         />
-        {searchQuery && <X size={14} className="text-[#9ca3af] cursor-pointer" onClick={() => setSearchQuery("")} />}
+        {searchQuery && <X size={14} className="text-text-muted cursor-pointer" onClick={() => setSearchQuery("")} />}
       </div>
 
       {/* Category filter chips */}
@@ -726,8 +726,8 @@ export default function Inventory() {
           <button key={name} onClick={() => setActiveFilter(name)}
             className={`px-[12px] py-[5px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-all
               ${activeFilter === name
-                ? "bg-accent text-black border-accent"
-                : "bg-surface2 text-[#9ca3af] border-[#252830]"}`}>
+                ? "bg-accent text-on-accent border-accent"
+                : "bg-surface2 text-text-muted border-border"}`}>
             {name}
           </button>
         ))}
@@ -738,15 +738,15 @@ export default function Inventory() {
         {filteredInventory.length === 0 ? (
           <div className="text-center mt-16">
             <div className="text-5xl mb-4">📦</div>
-            <div className="text-[15px] font-semibold text-white">No inventory yet</div>
-            <div className="text-[12px] text-[#9ca3af] mt-1">Tap + to add products</div>
+            <div className="text-[15px] font-semibold text-text">No inventory yet</div>
+            <div className="text-[12px] text-text-muted mt-1">Tap + to add products</div>
           </div>
         ) : (
           filteredInventory.map(brand => {
             const totalVariants = brand.products.reduce((t, p) => t + p.variants.length, 0)
             return (
               <div key={brand.brand_id} className="mb-3 rounded-2xl overflow-hidden"
-                   style={{ background: "#141618", border: "1px solid #252830" }}>
+                   style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
 
                 {/* Brand header row */}
                 <div className="flex items-center gap-3 p-4">
@@ -758,32 +758,32 @@ export default function Inventory() {
                   />
 
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleBrand(brand.brand_id)}>
-                    <h2 className="font-syne font-bold text-[16px] text-white">{brand.brand_name}</h2>
-                    <p className="text-[11px] text-[#9ca3af] mt-[2px] truncate">
+                    <h2 className="font-syne font-bold text-[16px] text-text">{brand.brand_name}</h2>
+                    <p className="text-[11px] text-text-muted mt-[2px] truncate">
                       {brand.products.slice(0,3).map(p => p.product_name).join(", ")}
                       {brand.products.length > 3 && " + more"}
                     </p>
-                    <p className="text-[10px] text-[#9ca3af] mt-[3px]">
+                    <p className="text-[10px] text-text-muted mt-[3px]">
                       {brand.products.length} products · {totalVariants} variants
                     </p>
                   </div>
 
                   <div className="cursor-pointer" onClick={() => toggleBrand(brand.brand_id)}>
                     {isExpanded(brand.brand_id)
-                      ? <ChevronUp size={18} className="text-[#9ca3af]" />
-                      : <ChevronDown size={18} className="text-[#9ca3af]" />}
+                      ? <ChevronUp size={18} className="text-text-muted" />
+                      : <ChevronDown size={18} className="text-text-muted" />}
                   </div>
                 </div>
 
                 {/* Expanded products */}
                 {isExpanded(brand.brand_id) && (
-                  <div className="px-4 pb-4 space-y-4" style={{ borderTop: "1px solid #252830" }}>
+                  <div className="px-4 pb-4 space-y-4" style={{ borderTop: "1px solid rgb(var(--color-border))" }}>
                     {brand.products.map(product => (
                       <div key={product.product_id} className="pt-3">
                         {/* Product row with its own thumbnail */}
                         <div className="flex items-center gap-[10px] mb-2">
                           <Thumb src={product.image_url} size={36} rounded={10} />
-                          <h3 className="text-[13px] font-semibold text-[#9ca3af]">{product.product_name}</h3>
+                          <h3 className="text-[13px] font-semibold text-text-muted">{product.product_name}</h3>
                         </div>
 
                         <div className="space-y-2">
@@ -799,8 +799,8 @@ export default function Inventory() {
                               }}
                               className="flex items-center gap-3 p-3 rounded-xl transition-all"
                               style={{
-                                background: highlightedVariantId === variant.id ? "rgba(244,166,35,0.08)" : "#1c1e22",
-                                border: highlightedVariantId === variant.id ? "1px solid rgba(244,166,35,0.6)" : "1px solid #252830",
+                                background: highlightedVariantId === variant.id ? "rgba(244,166,35,0.08)" : "rgb(var(--color-surface-2))",
+                                border: highlightedVariantId === variant.id ? "1px solid rgba(244,166,35,0.6)" : "1px solid rgb(var(--color-border))",
                                 boxShadow: highlightedVariantId === variant.id ? "0 0 0 1px rgba(244,166,35,0.18), 0 10px 24px rgba(244,166,35,0.08)" : "none",
                               }}
                             >
@@ -809,8 +809,8 @@ export default function Inventory() {
                               <Thumb src={variant.image_url} size={40} rounded={10} />
 
                               <div className="flex-1 min-w-0">
-                                <p className="text-[11px] text-[#9ca3af]">{variant.vehicle_model}</p>
-                                <p className="font-syne font-bold text-[15px] text-white mt-[2px]">₹{variant.price}</p>
+                                <p className="text-[11px] text-text-muted">{variant.vehicle_model}</p>
+                                <p className="font-syne font-bold text-[15px] text-text mt-[2px]">₹{variant.price}</p>
                                 {variant.stock > 10
                                   ? <span className="text-[10px] bg-green-500/15 text-green-400 px-2 py-[2px] rounded-full mt-1 inline-block font-bold">{variant.stock} in stock</span>
                                   : variant.stock > 0
@@ -820,7 +820,7 @@ export default function Inventory() {
                               </div>
 
                               <div className="flex gap-3 flex-shrink-0">
-                                <Pencil size={17} className="text-[#9ca3af] cursor-pointer hover:text-accent transition-colors"
+                                <Pencil size={17} className="text-text-muted cursor-pointer hover:text-accent transition-colors"
                                   onClick={() => {
                                     setEditVariant(variant)
                                     setEditForm({ stock: variant.stock, price: variant.price })
@@ -845,7 +845,7 @@ export default function Inventory() {
       {/* FAB */}
       <button
         onClick={() => setShowAddModal(true)}
-        className="fixed bottom-[100px] right-5 w-[52px] h-[52px] rounded-[16px] bg-accent text-black font-bold text-[24px] flex items-center justify-center z-50 transition-transform hover:scale-105"
+        className="fixed bottom-[100px] right-5 w-[52px] h-[52px] rounded-[16px] bg-accent text-on-accent font-bold text-[24px] flex items-center justify-center z-50 transition-transform hover:scale-105"
         style={{ boxShadow: "0 4px 16px rgba(244,166,35,0.4)" }}
       >+</button>
 
@@ -863,8 +863,8 @@ export default function Inventory() {
                 label="Product photo"
               />
               <div>
-                <div className="text-[12px] text-white font-semibold">Product Photo</div>
-                <div className="text-[10px] text-[#9ca3af] mt-[2px]">Tap to upload an image</div>
+                <div className="text-[12px] text-text font-semibold">Product Photo</div>
+                <div className="text-[10px] text-text-muted mt-[2px]">Tap to upload an image</div>
               </div>
             </div>
 
@@ -877,22 +877,22 @@ export default function Inventory() {
               { label: "Stock",         key: "stock" },
             ].map(f => (
               <div key={f.key}>
-                <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[4px]">{f.label}</label>
+                <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[4px]">{f.label}</label>
                 <input
                   type="text"
                   placeholder={f.label}
                   value={formData[f.key]}
                   onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
-                  className="w-full bg-surface2 text-white text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
-                  style={{ border: "1px solid #252830" }}
+                  className="w-full bg-surface2 text-text text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
+                  style={{ border: "1px solid rgb(var(--color-border))" }}
                   onFocus={e => e.target.style.borderColor = "#f4a623"}
-                  onBlur={e => e.target.style.borderColor = "#252830"}
+                  onBlur={e => e.target.style.borderColor = "rgb(var(--color-border))"}
                 />
               </div>
             ))}
           </div>
           <button onClick={handleAddProduct}
-            className="w-full mt-4 bg-accent text-black font-bold py-[12px] rounded-[12px] text-[13px] hover:opacity-90 transition-opacity">
+            className="w-full mt-4 bg-accent text-on-accent font-bold py-[12px] rounded-[12px] text-[13px] hover:opacity-90 transition-opacity">
             Save Product
           </button>
         </Modal>
@@ -911,8 +911,8 @@ export default function Inventory() {
               label="Variant photo"
             />
             <div>
-              <div className="text-[12px] text-white font-semibold">Variant Photo</div>
-              <div className="text-[10px] text-[#9ca3af] mt-[2px]">Tap to change image</div>
+              <div className="text-[12px] text-text font-semibold">Variant Photo</div>
+              <div className="text-[10px] text-text-muted mt-[2px]">Tap to change image</div>
             </div>
           </div>
 
@@ -922,21 +922,21 @@ export default function Inventory() {
               { label: "Price (₹)", key: "price" },
             ].map(f => (
               <div key={f.key}>
-                <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[4px]">{f.label}</label>
+                <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[4px]">{f.label}</label>
                 <input
                   type="number"
                   value={editForm[f.key]}
                   onChange={e => setEditForm({ ...editForm, [f.key]: e.target.value })}
-                  className="w-full bg-surface2 text-white text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
-                  style={{ border: "1px solid #252830" }}
+                  className="w-full bg-surface2 text-text text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
+                  style={{ border: "1px solid rgb(var(--color-border))" }}
                   onFocus={e => e.target.style.borderColor = "#f4a623"}
-                  onBlur={e => e.target.style.borderColor = "#252830"}
+                  onBlur={e => e.target.style.borderColor = "rgb(var(--color-border))"}
                 />
               </div>
             ))}
           </div>
           <button onClick={handleUpdateVariant}
-            className="w-full mt-4 bg-accent text-black font-bold py-[12px] rounded-[12px] text-[13px] hover:opacity-90 transition-opacity">
+            className="w-full mt-4 bg-accent text-on-accent font-bold py-[12px] rounded-[12px] text-[13px] hover:opacity-90 transition-opacity">
             Update Variant
           </button>
         </Modal>
@@ -973,16 +973,16 @@ function BrandLogoUpload({ src, onFile }) {
       {showImg
         ? <img src={preview || resolvedSrc} onError={() => setErr(true)}
                className="w-full h-full object-cover"
-               style={{ borderRadius: 12, border: "1px solid #252830" }} />
+               style={{ borderRadius: 12, border: "1px solid rgb(var(--color-border))" }} />
         : <div className="w-full h-full flex items-center justify-center"
-               style={{ borderRadius: 12, background: "#1c1e22", border: "2px dashed #94a3b8" }}>
-            <Camera size={17} className="text-[#94a3b8] group-hover:text-accent transition-colors" />
+               style={{ borderRadius: 12, background: "rgb(var(--color-surface-2))", border: "2px dashed rgb(var(--color-text-faint))" }}>
+            <Camera size={17} className="text-text-faint group-hover:text-accent transition-colors" />
           </div>
       }
       {/* hover overlay */}
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-           style={{ background: "rgba(0,0,0,0.55)", borderRadius: 12 }}>
-        <ImagePlus size={15} className="text-white" />
+           style={{ background: "var(--image-hover-scrim)", borderRadius: 12 }}>
+        <ImagePlus size={15} className="text-text" />
       </div>
       <input ref={ref} type="file" accept="image/*" className="hidden" onChange={handlePick} />
     </button>
@@ -991,13 +991,17 @@ function BrandLogoUpload({ src, onFile }) {
 
 function Modal({ title, onClose, children }) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50" onClick={onClose}>
+    <div
+      className="fixed inset-0 flex items-end justify-center z-50"
+      style={{ background: "var(--overlay-scrim)" }}
+      onClick={onClose}
+    >
       <div className="w-full max-w-md p-6 rounded-t-3xl max-h-[88vh] overflow-y-auto"
-           style={{ background: "#141618", border: "1px solid #252830" }}
+           style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
            onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-5">
-          <h2 className="font-syne font-bold text-[18px] text-white">{title}</h2>
-          <X size={20} className="text-[#9ca3af] cursor-pointer hover:text-white" onClick={onClose} />
+          <h2 className="font-syne font-bold text-[18px] text-text">{title}</h2>
+          <X size={20} className="text-text-muted cursor-pointer hover:text-text" onClick={onClose} />
         </div>
         {children}
       </div>

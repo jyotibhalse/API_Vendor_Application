@@ -8,7 +8,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-bg text-[13px] text-[#9ca3af]">
+      <div className="flex h-full items-center justify-center bg-bg text-[13px] text-text-muted">
         Loading...
       </div>
     )

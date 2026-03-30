@@ -94,8 +94,8 @@ export default function Alerts() {
   return (
     <div className="flex h-full flex-col bg-bg animate-fadeUp">
       <div className="px-5 pb-4 pt-5">
-        <h1 className="font-syne text-[30px] font-extrabold leading-none text-white">Stock Alerts</h1>
-        <p className="mt-2 text-[12px] text-[#9ca3af]">{summaryText}</p>
+        <h1 className="font-syne text-[30px] font-extrabold leading-none text-text">Stock Alerts</h1>
+        <p className="mt-2 text-[12px] text-text-muted">{summaryText}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-5">
@@ -127,15 +127,15 @@ function AlertSection({ title, subtitle, items, emptyLabel }) {
   return (
     <section className="mb-6 last:mb-0">
       <div className="mb-3">
-        <h2 className="font-syne text-[20px] font-bold text-white">{title}</h2>
-        <p className="mt-1 text-[11px] text-[#9ca3af]">{subtitle}</p>
+        <h2 className="font-syne text-[20px] font-bold text-text">{title}</h2>
+        <p className="mt-1 text-[11px] text-text-muted">{subtitle}</p>
       </div>
 
       <div className="space-y-3">
         {items.length === 0 ? (
           <div
-            className="rounded-[18px] px-4 py-4 text-[12px] text-[#9ca3af]"
-            style={{ background: "#141618", border: "1px solid #252830" }}
+            className="rounded-[18px] px-4 py-4 text-[12px] text-text-muted"
+            style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
           >
             {emptyLabel}
           </div>
@@ -166,7 +166,7 @@ function AlertCard({ item, onOpen }) {
         isInteractive ? "cursor-pointer hover:-translate-y-[1px]" : "cursor-default"
       }`}
       style={{
-        background: "#141618",
+        background: "rgb(var(--color-surface))",
         border: `1px solid ${style.border}`,
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
       }}
@@ -180,8 +180,8 @@ function AlertCard({ item, onOpen }) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="font-syne text-[16px] font-bold leading-tight text-white">{item.title}</div>
-          <p className="mt-1 text-[11px] leading-[1.45] text-[#9ca3af]">{item.description}</p>
+          <div className="font-syne text-[16px] font-bold leading-tight text-text">{item.title}</div>
+          <p className="mt-1 text-[11px] leading-[1.45] text-text-muted">{item.description}</p>
         </div>
       </div>
     </button>

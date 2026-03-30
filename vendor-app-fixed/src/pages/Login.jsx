@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
+import PasswordField from "../components/ui/PasswordField"
 import { useAuth } from "../context/AuthContext"
 import { getHomeRoute } from "../utils/auth"
 
@@ -70,29 +71,29 @@ export default function Login() {
     >
       <div className="mb-8">
         <div
-          className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4 shadow-lg text-black font-syne font-extrabold text-[20px]"
+          className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center mb-4 shadow-lg text-on-accent font-syne font-extrabold text-[20px]"
           style={{ boxShadow: "0 4px 20px rgba(244,166,35,0.4)" }}
         >
           {currentRole.badge}
         </div>
-        <div className="inline-flex rounded-full bg-surface2 p-1 border border-[#252830] mb-4">
+        <div className="inline-flex rounded-full bg-surface2 p-1 border border-border mb-4">
           {Object.entries(ROLE_META).map(([key, meta]) => (
             <button
               key={key}
               type="button"
               onClick={() => setRole(key)}
               className={`px-4 py-[7px] rounded-full text-[12px] font-semibold transition-all ${
-                role === key ? "bg-accent text-black" : "text-[#9ca3af]"
+                role === key ? "bg-accent text-on-accent" : "text-text-muted"
               }`}
             >
               {meta.label}
             </button>
           ))}
         </div>
-        <h1 className="font-syne font-extrabold text-[28px] text-white leading-tight">
+        <h1 className="font-syne font-extrabold text-[28px] text-text leading-tight">
           {currentRole.title}
         </h1>
-        <p className="text-[14px] text-[#9ca3af] mt-1">{currentRole.subtitle}</p>
+        <p className="text-[14px] text-text-muted mt-1">{currentRole.subtitle}</p>
       </div>
 
       {error && (
@@ -106,7 +107,7 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[5px]">
+          <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[5px]">
             Email
           </label>
           <input
@@ -115,57 +116,49 @@ export default function Login() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
-            className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none transition-all"
-            style={{ border: "1px solid #252830" }}
+            className="w-full bg-surface2 text-text text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none transition-all"
+            style={{ border: "1px solid rgb(var(--color-border))" }}
             onFocus={(event) => {
               event.target.style.borderColor = "#f4a623"
             }}
             onBlur={(event) => {
-              event.target.style.borderColor = "#252830"
+              event.target.style.borderColor = "rgb(var(--color-border))"
             }}
           />
         </div>
 
         <div>
-          <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[5px]">
+          <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[5px]">
             Password
           </label>
-          <input
-            type="password"
+          <PasswordField
             placeholder="Enter your password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
-            className="w-full bg-surface2 text-white text-[13px] px-[14px] py-[11px] rounded-[12px] outline-none transition-all"
-            style={{ border: "1px solid #252830" }}
-            onFocus={(event) => {
-              event.target.style.borderColor = "#f4a623"
-            }}
-            onBlur={(event) => {
-              event.target.style.borderColor = "#252830"
-            }}
+            autoComplete="current-password"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-accent text-black font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity mt-2"
+          className="w-full bg-accent text-on-accent font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity mt-2"
           style={{ opacity: loading ? 0.7 : 1 }}
         >
           {loading ? "Signing in..." : `Sign In as ${currentRole.label}`}
         </button>
       </form>
 
-      <p className="text-center text-[12px] text-[#9ca3af] mt-6">
+      <p className="text-center text-[12px] text-text-muted mt-6">
         Need an account?{" "}
         <Link to="/register" state={{ preferredRole: role }} className="text-accent font-semibold">
           Create one here
         </Link>
       </p>
 
-      <p className="text-center text-[12px] text-[#9ca3af] mt-2">
-        <Link to="/forgot-password" className="text-[#9ca3af] hover:text-accent transition-colors">
+      <p className="text-center text-[12px] text-text-muted mt-2">
+        <Link to="/forgot-password" className="text-text-muted hover:text-accent transition-colors">
           Forgot password?
         </Link>
       </p>

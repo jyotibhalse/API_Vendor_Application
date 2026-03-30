@@ -41,7 +41,7 @@ function Thumb({ src, size = 48, rounded = 12 }) {
         src={imageUrl}
         onError={() => setFailed(true)}
         className="object-cover flex-shrink-0"
-        style={{ width: size, height: size, borderRadius: rounded, border: "1px solid #252830" }}
+        style={{ width: size, height: size, borderRadius: rounded, border: "1px solid rgb(var(--color-border))" }}
       />
     )
   }
@@ -49,9 +49,9 @@ function Thumb({ src, size = 48, rounded = 12 }) {
   return (
     <div
       className="flex items-center justify-center flex-shrink-0"
-      style={{ width: size, height: size, borderRadius: rounded, background: "#1c1e22", border: "1px solid #252830" }}
+      style={{ width: size, height: size, borderRadius: rounded, background: "rgb(var(--color-surface-2))", border: "1px solid rgb(var(--color-border))" }}
     >
-      <Camera size={size * 0.38} className="text-[#94a3b8]" />
+      <Camera size={size * 0.38} className="text-text-faint" />
     </div>
   )
 }
@@ -102,15 +102,19 @@ function getBrandThumb(brand) {
 
 function Modal({ title, onClose, children }) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end justify-center z-50" onClick={onClose}>
+    <div
+      className="fixed inset-0 flex items-end justify-center z-50"
+      style={{ background: "var(--overlay-scrim)" }}
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-md p-6 rounded-t-3xl max-h-[88vh] overflow-y-auto"
-        style={{ background: "#141618", border: "1px solid #252830" }}
+        style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-5">
-          <h2 className="font-syne font-bold text-[18px] text-white">{title}</h2>
-          <button type="button" onClick={onClose} className="text-[#9ca3af] hover:text-white transition-colors">
+          <h2 className="font-syne font-bold text-[18px] text-text">{title}</h2>
+          <button type="button" onClick={onClose} className="text-text-muted hover:text-text transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -288,29 +292,29 @@ export default function CustomerInventory() {
     <div className="flex flex-col h-full bg-bg animate-fadeUp">
       <div
         className="px-5 pt-4 pb-3 flex-shrink-0 flex items-center justify-between"
-        style={{ borderBottom: "1px solid #252830" }}
+        style={{ borderBottom: "1px solid rgb(var(--color-border))" }}
       >
         <div>
-          <div className="font-syne font-extrabold text-[22px] text-white">Inventory</div>
-          <div className="text-[12px] text-[#9ca3af]">{inventory.length} brands</div>
+          <div className="font-syne font-extrabold text-[22px] text-text">Inventory</div>
+          <div className="text-[12px] text-text-muted">{inventory.length} brands</div>
         </div>
       </div>
 
       <div
         className="mx-5 mt-3 mb-0 flex items-center gap-[10px] px-[14px] py-[11px] rounded-[14px]"
-        style={{ background: "#141618", border: "1px solid #252830" }}
+        style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
       >
-        <Search size={16} className="text-[#9ca3af]" />
+        <Search size={16} className="text-text-muted" />
         <input
           type="text"
           placeholder="Search brands, products, models..."
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          className="flex-1 bg-transparent outline-none text-white text-[13px] placeholder-[#9ca3af]"
+          className="flex-1 bg-transparent outline-none text-text text-[13px] placeholder:text-text-muted"
         />
         {searchQuery && (
           <button type="button" onClick={() => setSearchQuery("")}>
-            <X size={14} className="text-[#9ca3af] cursor-pointer" />
+            <X size={14} className="text-text-muted cursor-pointer" />
           </button>
         )}
       </div>
@@ -323,8 +327,8 @@ export default function CustomerInventory() {
             onClick={() => setActiveFilter(name)}
             className={`px-[12px] py-[5px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-all ${
               activeFilter === name
-                ? "bg-accent text-black border-accent"
-                : "bg-surface2 text-[#9ca3af] border-[#252830]"
+                ? "bg-accent text-on-accent border-accent"
+                : "bg-surface2 text-text-muted border-border"
             }`}
           >
             {name}
@@ -334,12 +338,12 @@ export default function CustomerInventory() {
 
       <div className="flex-1 overflow-y-auto px-5 pb-5 relative">
         {loading ? (
-          <div className="text-[13px] text-[#9ca3af] text-center mt-10">Loading inventory...</div>
+          <div className="text-[13px] text-text-muted text-center mt-10">Loading inventory...</div>
         ) : filteredInventory.length === 0 ? (
           <div className="text-center mt-16">
             <div className="text-5xl mb-4">Inventory</div>
-            <div className="text-[15px] font-semibold text-white">No inventory yet</div>
-            <div className="text-[12px] text-[#9ca3af] mt-1">Ask a vendor to add products first.</div>
+            <div className="text-[15px] font-semibold text-text">No inventory yet</div>
+            <div className="text-[12px] text-text-muted mt-1">Ask a vendor to add products first.</div>
           </div>
         ) : (
           filteredInventory.map((brand) => {
@@ -351,38 +355,38 @@ export default function CustomerInventory() {
               <div
                 key={brandId}
                 className="mb-3 rounded-2xl overflow-hidden"
-                style={{ background: "#141618", border: "1px solid #252830" }}
+                style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
               >
                 <div className="flex items-center gap-3 p-4 cursor-pointer" onClick={() => toggleBrand(brandId)}>
                   <Thumb src={brandThumb} size={46} rounded={12} />
 
                   <div className="flex-1 min-w-0">
-                    <h2 className="font-syne font-bold text-[16px] text-white">{brand.brand_name}</h2>
-                    <p className="text-[11px] text-[#9ca3af] mt-[2px] truncate">
+                    <h2 className="font-syne font-bold text-[16px] text-text">{brand.brand_name}</h2>
+                    <p className="text-[11px] text-text-muted mt-[2px] truncate">
                       {brand.products.slice(0, 3).map((product) => product.product_name).join(", ")}
                       {brand.products.length > 3 && " + more"}
                     </p>
-                    <p className="text-[10px] text-[#9ca3af] mt-[3px]">
+                    <p className="text-[10px] text-text-muted mt-[3px]">
                       {brand.products.length} products · {totalVariants} variants
                     </p>
                     <p className="text-[10px] text-accent mt-[4px] truncate">{brand.shop_name}</p>
                   </div>
 
                   {isExpanded(brandId)
-                    ? <ChevronUp size={18} className="text-[#9ca3af] flex-shrink-0" />
-                    : <ChevronDown size={18} className="text-[#9ca3af] flex-shrink-0" />}
+                    ? <ChevronUp size={18} className="text-text-muted flex-shrink-0" />
+                    : <ChevronDown size={18} className="text-text-muted flex-shrink-0" />}
                 </div>
 
                 {isExpanded(brandId) && (
-                  <div className="px-4 pb-4 space-y-4" style={{ borderTop: "1px solid #252830" }}>
+                  <div className="px-4 pb-4 space-y-4" style={{ borderTop: "1px solid rgb(var(--color-border))" }}>
                     {brand.products.map((product) => (
                       <div key={product.product_id} className="pt-3">
                         <div className="flex items-center gap-[10px] mb-2">
                           <Thumb src={product.image_url} size={36} rounded={10} />
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-[13px] font-semibold text-[#9ca3af]">{product.product_name}</h3>
+                            <h3 className="text-[13px] font-semibold text-text-muted">{product.product_name}</h3>
                             {product.description && (
-                              <p className="text-[10px] text-[#9ca3af] mt-[2px] truncate">{product.description}</p>
+                              <p className="text-[10px] text-text-muted mt-[2px] truncate">{product.description}</p>
                             )}
                           </div>
                         </div>
@@ -392,13 +396,13 @@ export default function CustomerInventory() {
                             <div
                               key={variant.id}
                               className="flex items-center gap-3 p-3 rounded-xl"
-                              style={{ background: "#1c1e22", border: "1px solid #252830" }}
+                              style={{ background: "rgb(var(--color-surface-2))", border: "1px solid rgb(var(--color-border))" }}
                             >
                               <Thumb src={variant.image_url} size={40} rounded={10} />
 
                               <div className="flex-1 min-w-0">
-                                <p className="text-[11px] text-[#9ca3af]">{variant.vehicle_model}</p>
-                                <p className="font-syne font-bold text-[15px] text-white mt-[2px]">
+                                <p className="text-[11px] text-text-muted">{variant.vehicle_model}</p>
+                                <p className="font-syne font-bold text-[15px] text-text mt-[2px]">
                                   Rs {formatAmount(variant.price)}
                                 </p>
                                 <StockBadge stock={variant.stock} />
@@ -411,8 +415,8 @@ export default function CustomerInventory() {
                                   onClick={() => openOrderModal(brand, product, variant)}
                                   className={`px-3 py-[9px] rounded-[12px] text-[11px] font-bold transition-all ${
                                     variant.stock <= 0
-                                      ? "bg-surface2 text-[#94a3b8] cursor-not-allowed"
-                                      : "bg-accent text-black hover:opacity-90"
+                                      ? "bg-surface2 text-text-faint cursor-not-allowed"
+                                      : "bg-accent text-on-accent hover:opacity-90"
                                   }`}
                                 >
                                   {variant.stock <= 0 ? "Unavailable" : "Order KOT"}
@@ -437,8 +441,8 @@ export default function CustomerInventory() {
             <div className="flex items-center gap-3 mb-1">
               <Thumb src={selectedOrder.product.image_url || selectedOrder.variant.image_url} size={58} rounded={14} />
               <div>
-                <div className="text-[12px] text-white font-semibold">{selectedOrder.product.product_name}</div>
-                <div className="text-[10px] text-[#9ca3af] mt-[2px]">{selectedOrder.brand.shop_name}</div>
+                <div className="text-[12px] text-text font-semibold">{selectedOrder.product.product_name}</div>
+                <div className="text-[10px] text-text-muted mt-[2px]">{selectedOrder.brand.shop_name}</div>
                 <div className="text-[10px] text-accent mt-[2px]">{selectedOrder.variant.vehicle_model}</div>
               </div>
             </div>
@@ -454,7 +458,7 @@ export default function CustomerInventory() {
             )}
 
             <div>
-              <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[4px]">Quantity</label>
+              <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[4px]">Quantity</label>
               <input
                 type="number"
                 min="1"
@@ -463,19 +467,19 @@ export default function CustomerInventory() {
                 onChange={(event) =>
                   setOrderForm((current) => ({ ...current, quantity: event.target.value }))
                 }
-                className="w-full bg-surface2 text-white text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
-                style={{ border: "1px solid #252830" }}
+                className="w-full bg-surface2 text-text text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
+                style={{ border: "1px solid rgb(var(--color-border))" }}
                 onFocus={(event) => {
                   event.target.style.borderColor = "#f4a623"
                 }}
                 onBlur={(event) => {
-                  event.target.style.borderColor = "#252830"
+                  event.target.style.borderColor = "rgb(var(--color-border))"
                 }}
               />
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase tracking-[0.5px] text-[#9ca3af] mb-[4px]">
+              <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[4px]">
                 Vehicle Number
               </label>
               <input
@@ -485,20 +489,20 @@ export default function CustomerInventory() {
                 onChange={(event) =>
                   setOrderForm((current) => ({ ...current, vehicle_number: event.target.value }))
                 }
-                className="w-full bg-surface2 text-white text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
-                style={{ border: "1px solid #252830" }}
+                className="w-full bg-surface2 text-text text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
+                style={{ border: "1px solid rgb(var(--color-border))" }}
                 onFocus={(event) => {
                   event.target.style.borderColor = "#f4a623"
                 }}
                 onBlur={(event) => {
-                  event.target.style.borderColor = "#252830"
+                  event.target.style.borderColor = "rgb(var(--color-border))"
                 }}
               />
             </div>
 
             <label
               className="flex items-center gap-3 px-4 py-3 rounded-[14px] cursor-pointer"
-              style={{ background: "#101214", border: "1px solid #252830" }}
+              style={{ background: "rgb(var(--color-surface-3))", border: "1px solid rgb(var(--color-border))" }}
             >
               <input
                 type="checkbox"
@@ -509,24 +513,24 @@ export default function CustomerInventory() {
                 className="accent-[#f4a623]"
               />
               <div>
-                <div className="text-[12px] font-semibold text-white">Mark as urgent</div>
-                <div className="text-[10px] text-[#9ca3af] mt-[2px]">This will be highlighted for the vendor.</div>
+                <div className="text-[12px] font-semibold text-text">Mark as urgent</div>
+                <div className="text-[10px] text-text-muted mt-[2px]">This will be highlighted for the vendor.</div>
               </div>
             </label>
 
             <div
               className="rounded-[14px] px-4 py-3 flex items-center justify-between"
-              style={{ background: "#101214", border: "1px solid #252830" }}
+              style={{ background: "rgb(var(--color-surface-3))", border: "1px solid rgb(var(--color-border))" }}
             >
               <div>
-                <div className="text-[10px] uppercase tracking-[0.5px] text-[#9ca3af]">Estimated total</div>
-                <div className="font-syne font-extrabold text-[18px] text-white">Rs {formatAmount(orderTotal)}</div>
+                <div className="text-[10px] uppercase tracking-[0.5px] text-text-muted">Estimated total</div>
+                <div className="font-syne font-extrabold text-[18px] text-text">Rs {formatAmount(orderTotal)}</div>
               </div>
               <button
                 type="button"
                 onClick={submitOrder}
                 disabled={submitting}
-                className="px-4 py-[11px] rounded-[12px] bg-accent text-black text-[12px] font-bold transition-opacity"
+                className="px-4 py-[11px] rounded-[12px] bg-accent text-on-accent text-[12px] font-bold transition-opacity"
                 style={{ opacity: submitting ? 0.7 : 1 }}
               >
                 {submitting ? "Placing..." : "Place Order"}

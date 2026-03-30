@@ -85,7 +85,7 @@ export default function VerifyOTP() {
   return (
     <div className="min-h-screen bg-bg flex flex-col justify-center px-6">
       {/* Back */}
-      <Link to="/forgot-password" className="text-[#9ca3af] text-[13px] mb-10 flex items-center gap-1">
+      <Link to="/forgot-password" className="text-text-muted text-[13px] mb-10 flex items-center gap-1">
         ← Back
       </Link>
 
@@ -95,8 +95,8 @@ export default function VerifyOTP() {
         <span className="text-2xl">🔑</span>
       </div>
 
-      <h1 className="font-syne font-extrabold text-[26px] text-white mb-2">Enter OTP</h1>
-      <p className="text-[13px] text-[#9ca3af] mb-8">
+      <h1 className="font-syne font-extrabold text-[26px] text-text mb-2">Enter OTP</h1>
+      <p className="text-[13px] text-text-muted mb-8">
         We sent a 6-digit code to<br />
         <span className="text-accent font-semibold">{email}</span>
       </p>
@@ -120,10 +120,10 @@ export default function VerifyOTP() {
             value={digit}
             onChange={e => handleChange(i, e.target.value)}
             onKeyDown={e => handleKeyDown(i, e)}
-            className="flex-1 text-center text-white font-syne font-extrabold text-[22px] py-4 rounded-[14px] outline-none transition-all"
+            className="flex-1 text-center text-text font-syne font-extrabold text-[22px] py-4 rounded-[14px] outline-none transition-all"
             style={{
-              background: "#141618",
-              border: digit ? "2px solid #f4a623" : "1px solid #252830",
+              background: "rgb(var(--color-surface))",
+              border: digit ? "2px solid #f4a623" : "1px solid rgb(var(--color-border))",
             }}
           />
         ))}
@@ -132,17 +132,17 @@ export default function VerifyOTP() {
       <button
         onClick={handleVerify}
         disabled={loading || otp.join("").length < 6}
-        className="w-full bg-accent text-black font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity mb-4"
+        className="w-full bg-accent text-on-accent font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity mb-4"
         style={{ opacity: (loading || otp.join("").length < 6) ? 0.5 : 1 }}
       >
         {loading ? "Verifying..." : "Verify OTP"}
       </button>
 
       {/* Resend */}
-      <p className="text-center text-[13px] text-[#9ca3af]">
+      <p className="text-center text-[13px] text-text-muted">
         Didn't receive it?{" "}
         {countdown > 0 ? (
-          <span className="text-[#9ca3af]">Resend in {countdown}s</span>
+          <span className="text-text-muted">Resend in {countdown}s</span>
         ) : (
           <button
             onClick={handleResend}

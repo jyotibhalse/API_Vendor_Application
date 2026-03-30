@@ -4,17 +4,25 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: "#f4a623",
-        surface: "#141618",
-        surface2: "#1c1e22",
-        surface3: "#242729",
-        border: "#252830",
-        bg: "#0c0d0f",
-        green: { DEFAULT: "#22c55e", 400: "#4ade80", 500: "#22c55e" },
-        red: { DEFAULT: "#ef4444" },
-        blue: { DEFAULT: "#3b82f6" },
-        purple: { DEFAULT: "#a855f7" },
-        text: { DEFAULT: "#f0f0f0", muted: "#9ca3af", faint: "#6b7280" },
+        accent: "rgb(var(--color-accent) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        surface2: "rgb(var(--color-surface-2) / <alpha-value>)",
+        surface3: "rgb(var(--color-surface-3) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
+        bg: "rgb(var(--color-bg) / <alpha-value>)",
+        green: {
+          DEFAULT: "rgb(var(--color-green) / <alpha-value>)",
+          400: "rgb(var(--color-green-400) / <alpha-value>)",
+          500: "rgb(var(--color-green) / <alpha-value>)",
+        },
+        red: { DEFAULT: "rgb(var(--color-red) / <alpha-value>)" },
+        blue: { DEFAULT: "rgb(var(--color-blue) / <alpha-value>)" },
+        purple: { DEFAULT: "rgb(var(--color-purple) / <alpha-value>)" },
+        text: {
+          DEFAULT: "rgb(var(--color-text-primary) / <alpha-value>)",
+          muted: "rgb(var(--color-text-muted) / <alpha-value>)",
+          faint: "rgb(var(--color-text-faint) / <alpha-value>)",
+        },
       },
       fontFamily: {
         syne: ["Syne", "sans-serif"],

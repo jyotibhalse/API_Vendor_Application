@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Boolean, Column, Integer, String, Text
 from app.core.database import Base
 
 class User(Base):
@@ -15,3 +15,5 @@ class User(Base):
     phone = Column(String, nullable=True)
     address = Column(String, nullable=True)
     role = Column(String, default="vendor")  # vendor | customer | admin
+    inventory_settings = Column(Text, nullable=True)
+    notification_settings = Column(Text, nullable=True)

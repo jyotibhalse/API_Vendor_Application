@@ -311,23 +311,32 @@
 #     return {"message": "Profile updated"}
 
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from fastapi.security import OAuth2PasswordBearer
-from app.core.config import EMAIL_FROM, EMAIL_PASSWORD, EMAIL_USER
-from app.core.security import verify_token, get_current_user
-from app.core.database import get_db
-from app.core.security import hash_password, verify_password, create_access_token
-from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin
-
+import json
 import random
 import string
 import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel, ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
+from app.core.config import EMAIL_FROM, EMAIL_PASSWORD, EMAIL_USER
+from app.core.database import get_db
+from app.core.security import create_access_token, get_current_user, hash_password, require_role, verify_password
+from app.models.user import User
+from app.schemas.user import (
+    ChangePasswordRequest,
+    InventorySettings,
+    NotificationSettings,
+    UserCreate,
+    UserLogin,
+    UserSettingsUpdate,
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -340,6 +349,36 @@ otp_store: dict = {}
 # ── Email config — loaded from environment variables ──
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
+
+
+def parse_settings(raw_value: str | None, schema_cls: type[BaseModel]) -> dict:
+    if not raw_value:
+        return schema_cls().model_dump()
+
+    try:
+        parsed = json.loads(raw_value)
+    except json.JSONDecodeError:
+        return schema_cls().model_dump()
+
+    try:
+        return schema_cls(**parsed).model_dump()
+    except ValidationError:
+        return schema_cls().model_dump()
+
+
+def serialize_user(user: User) -> dict:
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "shop_name": user.shop_name,
+        "phone": user.phone,
+        "address": user.address,
+        "role": user.role,
+        "is_active": user.is_active,
+        "inventory_settings": parse_settings(user.inventory_settings, InventorySettings),
+        "notification_settings": parse_settings(user.notification_settings, NotificationSettings),
+    }
 
 
 def generate_otp() -> str:
@@ -433,31 +472,13 @@ async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):
         "access_token": access_token,
         "token_type": "bearer",
         "role": db_user.role,
-        "user": {
-            "id": db_user.id,
-            "email": db_user.email,
-            "full_name": db_user.full_name,
-            "shop_name": db_user.shop_name,
-            "phone": db_user.phone,
-            "address": db_user.address,
-            "role": db_user.role,
-            "is_active": db_user.is_active,
-        },
+        "user": serialize_user(db_user),
     }
 
 
 @router.get("/me")
 async def get_me(current_user: User = Depends(get_current_user)):
-    return {
-        "id": current_user.id,
-        "email": current_user.email,
-        "full_name": current_user.full_name,
-        "shop_name": current_user.shop_name,
-        "phone": current_user.phone,
-        "address": current_user.address,
-        "role": current_user.role,
-        "is_active": current_user.is_active,
-    }
+    return serialize_user(current_user)
 
 
 @router.put("/profile")
@@ -480,6 +501,45 @@ async def update_profile(
 # ─────────────────────────────────────────────────────────
 # OTP PASSWORD RESET
 # ─────────────────────────────────────────────────────────
+
+@router.put("/settings")
+async def update_settings(
+    payload: UserSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("vendor")),
+):
+    if payload.inventory_settings is None and payload.notification_settings is None:
+        raise HTTPException(status_code=400, detail="No settings payload provided")
+
+    if payload.inventory_settings is not None:
+        current_user.inventory_settings = json.dumps(payload.inventory_settings.model_dump())
+
+    if payload.notification_settings is not None:
+        current_user.notification_settings = json.dumps(payload.notification_settings.model_dump())
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    return {
+        "message": "Settings updated",
+        "inventory_settings": parse_settings(current_user.inventory_settings, InventorySettings),
+        "notification_settings": parse_settings(current_user.notification_settings, NotificationSettings),
+    }
+
+
+@router.post("/change-password")
+async def change_password(
+    payload: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    current_user.hashed_password = hash_password(payload.new_password)
+    await db.commit()
+    return {"message": "Password updated successfully"}
+
 
 @router.post("/forgot-password")
 async def forgot_password(email: str, db: AsyncSession = Depends(get_db)):

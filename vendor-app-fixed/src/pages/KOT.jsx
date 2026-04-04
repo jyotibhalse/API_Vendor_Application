@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react"
 import { Mail, MapPin, Phone, UserRound } from "lucide-react"
 import api from "../api/axios"
+import { useUrgentOrderAlerts } from "../hooks/useUrgentOrderAlerts"
 
 const POLL_INTERVAL_MS = 15000
 const WS_RECONNECT_DELAY_MS = 3000
@@ -16,9 +17,8 @@ export default function KOT() {
   const pollIntervalRef = useRef(null)
   const pingIntervalRef = useRef(null)
   const ordersRef = useRef([])
-  const seenOrderIdsRef = useRef(new Set())
   const initialLoadCompleteRef = useRef(false)
-  const audioContextRef = useRef(null)
+  const { markOrdersSeen, notifyForEvent, notifyForOrders } = useUrgentOrderAlerts()
 
   const clearPingInterval = useEffectEvent(() => {
     if (pingIntervalRef.current) {
@@ -27,63 +27,18 @@ export default function KOT() {
     }
   })
 
-  const triggerUrgentAlert = useEffectEvent((count = 1) => {
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate([220, 120, 220])
-    }
-
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext
-    if (!AudioContextClass) {
-      return
-    }
-
-    try {
-      const context = audioContextRef.current ?? new AudioContextClass()
-      audioContextRef.current = context
-
-      if (context.state === "suspended") {
-        context.resume().catch(() => {})
-      }
-
-      const bursts = Math.min(count, 2)
-      for (let index = 0; index < bursts; index += 1) {
-        const oscillator = context.createOscillator()
-        const gainNode = context.createGain()
-        const startAt = context.currentTime + (index * 0.24)
-
-        oscillator.type = "triangle"
-        oscillator.frequency.setValueAtTime(880, startAt)
-        gainNode.gain.setValueAtTime(0.0001, startAt)
-        gainNode.gain.exponentialRampToValueAtTime(0.08, startAt + 0.02)
-        gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.18)
-
-        oscillator.connect(gainNode)
-        gainNode.connect(context.destination)
-        oscillator.start(startAt)
-        oscillator.stop(startAt + 0.2)
-      }
-    } catch {
-      // Ignore browser autoplay restrictions and keep the UI responsive.
-    }
-  })
-
   const syncOrders = useEffectEvent((nextOrders, { allowAlert = false } = {}) => {
     const normalizedOrders = sortByNewest(nextOrders)
-    const newUrgentOrders = allowAlert
-      ? normalizedOrders.filter(
-          (order) => order.is_urgent && !seenOrderIdsRef.current.has(order.id)
-        )
-      : []
 
     ordersRef.current = normalizedOrders
-    normalizedOrders.forEach((order) => seenOrderIdsRef.current.add(order.id))
-
     setOrders(normalizedOrders)
     setLoading(false)
     initialLoadCompleteRef.current = true
 
-    if (newUrgentOrders.length > 0) {
-      triggerUrgentAlert(newUrgentOrders.length)
+    if (allowAlert) {
+      notifyForOrders(normalizedOrders)
+    } else {
+      markOrdersSeen(normalizedOrders)
     }
   })
 
@@ -117,11 +72,7 @@ export default function KOT() {
 
     const nextOrder = message.order
     const nextOrdersMap = new Map(ordersRef.current.map((order) => [order.id, order]))
-    const isNewUrgentOrder =
-      message.type === "order.created" &&
-      nextOrder.status === "pending" &&
-      nextOrder.is_urgent &&
-      !seenOrderIdsRef.current.has(nextOrder.id)
+    notifyForEvent(message)
 
     if (nextOrder.status === "pending") {
       nextOrdersMap.set(nextOrder.id, nextOrder)
@@ -131,15 +82,10 @@ export default function KOT() {
 
     const normalizedOrders = sortByNewest(Array.from(nextOrdersMap.values()))
     ordersRef.current = normalizedOrders
-    normalizedOrders.forEach((order) => seenOrderIdsRef.current.add(order.id))
 
     setOrders(normalizedOrders)
     setLoading(false)
     initialLoadCompleteRef.current = true
-
-    if (isNewUrgentOrder) {
-      triggerUrgentAlert()
-    }
   })
 
   const scheduleReconnect = useEffectEvent(() => {
@@ -223,10 +169,6 @@ export default function KOT() {
         socketRef.current.onerror = null
         socketRef.current.close()
         socketRef.current = null
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close().catch(() => {})
-        audioContextRef.current = null
       }
     }
   }, [])

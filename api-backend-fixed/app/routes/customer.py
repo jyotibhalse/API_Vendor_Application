@@ -1,13 +1,14 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import case, func
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.order_serialization import get_order_payload
+from app.core.order_serialization import get_order_payload, serialize_orders
 from app.core.realtime import order_realtime_hub
 from app.core.security import require_role
 from app.models.brand import Brand
@@ -20,6 +21,8 @@ from app.schemas.customer import CustomerOrderCreate
 
 router = APIRouter(prefix="/customer", tags=["Customer"])
 customer_only = require_role("customer")
+
+ACTIVE_ORDER_STATUSES = ("accepted", "packing", "out_for_delivery")
 
 
 def serialize_brand(brand: Brand) -> dict:
@@ -47,6 +50,31 @@ def serialize_brand(brand: Brand) -> dict:
             for product in brand.products
         ],
     }
+
+
+def _build_customer_order_filters(customer_id: int, status: str | None, search: str | None) -> list:
+    filters = [Order.customer_id == customer_id]
+
+    if status:
+        filters.append(Order.status == status)
+
+    if search:
+        needle = search.strip()
+        if needle:
+            if needle.isdigit():
+                filters.append(Order.id == int(needle))
+            else:
+                filters.append(Order.vehicle_number.ilike(f"%{needle}%"))
+
+    return filters
+
+
+def _order_sorting():
+    return (
+        case((Order.status == "delivered", 1), else_=0),
+        Order.created_at.desc(),
+        Order.id.desc(),
+    )
 
 
 @router.get("/inventory")
@@ -126,7 +154,10 @@ async def create_customer_order(
         if "customer_id" in database_error and "orders" in database_error:
             raise HTTPException(
                 status_code=500,
-                detail="Database schema is outdated for customer orders. Restart the backend or run python migrate.py once.",
+                detail=(
+                    "Database schema is outdated for customer orders. "
+                    "Restart the backend or run python migrate.py once."
+                ),
             ) from exc
         raise HTTPException(
             status_code=500,
@@ -157,76 +188,55 @@ async def create_customer_order(
 async def get_customer_orders(
     status: Optional[str] = None,
     search: Optional[str] = None,
+    limit: int | None = Query(default=None, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(customer_only),
 ):
+    filters = _build_customer_order_filters(current_user.id, status, search)
     query = (
         select(Order)
-        .where(Order.customer_id == current_user.id)
+        .where(*filters)
         .options(selectinload(Order.items))
-        .order_by(Order.created_at.desc())
+        .order_by(*_order_sorting())
     )
 
-    if status:
-        query = query.where(Order.status == status)
+    if limit is None:
+        result = await db.execute(query)
+        orders = result.scalars().all()
+        return await serialize_orders(orders, db, include_vendor=True)
 
-    result = await db.execute(query)
-    orders = result.scalars().all()
+    summary_result = await db.execute(
+        select(
+            func.count(Order.id).label("total"),
+            func.coalesce(
+                func.sum(case((Order.status == "pending", 1), else_=0)),
+                0,
+            ).label("pending_count"),
+            func.coalesce(
+                func.sum(case((Order.status.in_(ACTIVE_ORDER_STATUSES), 1), else_=0)),
+                0,
+            ).label("active_count"),
+        ).where(*filters)
+    )
+    summary = summary_result.one()
+    total = int(summary.total or 0)
 
-    if search:
-        needle = search.strip()
-        if needle.isdigit():
-            orders = [order for order in orders if order.id == int(needle)]
-        else:
-            lowered = needle.lower()
-            orders = [
-                order
-                for order in orders
-                if order.vehicle_number and lowered in order.vehicle_number.lower()
-            ]
+    paged_result = await db.execute(query.offset(offset).limit(limit))
+    orders = paged_result.scalars().all()
+    items = await serialize_orders(orders, db, include_vendor=True)
 
-    # Keep delivered orders at the end while preserving newest-first ordering within each status group.
-    orders.sort(key=lambda order: order.status == "delivered")
-
-    vendor_cache: dict[int, User | None] = {}
-    variant_cache: dict[int, Variant | None] = {}
-    response = []
-
-    for order in orders:
-        if order.vendor_id not in vendor_cache:
-            vendor_result = await db.execute(select(User).where(User.id == order.vendor_id))
-            vendor_cache[order.vendor_id] = vendor_result.scalars().first()
-
-        items_data = []
-        for item in order.items:
-            if item.variant_id not in variant_cache:
-                variant_result = await db.execute(select(Variant).where(Variant.id == item.variant_id))
-                variant_cache[item.variant_id] = variant_result.scalars().first()
-
-            variant = variant_cache[item.variant_id]
-            items_data.append(
-                {
-                    "variant_id": item.variant_id,
-                    "quantity": item.quantity,
-                    "vehicle_model": variant.vehicle_model if variant else None,
-                    "price": variant.price if variant else None,
-                }
-            )
-
-        vendor = vendor_cache[order.vendor_id]
-        response.append(
-            {
-                "id": order.id,
-                "status": order.status,
-                "total_amount": order.total_amount,
-                "vehicle_number": order.vehicle_number,
-                "is_urgent": order.is_urgent,
-                "created_at": order.created_at.isoformat() if order.created_at else None,
-                "vendor_id": order.vendor_id,
-                "vendor_name": vendor.full_name if vendor else None,
-                "shop_name": vendor.shop_name if vendor else None,
-                "items": items_data,
-            }
-        )
-
-    return response
+    return {
+        "items": items,
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": offset + len(items) < total,
+        },
+        "summary": {
+            "result_count": total,
+            "pending_count": int(summary.pending_count or 0),
+            "active_count": int(summary.active_count or 0),
+        },
+    }

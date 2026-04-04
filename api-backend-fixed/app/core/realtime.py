@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import uuid
 from collections import defaultdict
 from collections.abc import Iterable
 
@@ -24,7 +25,10 @@ class OrderRealtimeHub:
         self._redis_client = None
         self._pubsub = None
         self._listener_task: asyncio.Task | None = None
-        self._channel = "order_events"
+        self._channel_prefix = "order_events"
+        self._subscribed_channels: set[str] = set()
+        self._subscription_lock = asyncio.Lock()
+        self._instance_id = uuid.uuid4().hex
 
     @property
     def transport(self) -> str:
@@ -49,7 +53,6 @@ class OrderRealtimeHub:
         try:
             self._redis_client = redis_asyncio.from_url(REDIS_URL, decode_responses=True)
             self._pubsub = self._redis_client.pubsub()
-            await self._pubsub.subscribe(self._channel)
             self._listener_task = asyncio.create_task(self._listen_for_messages())
             logger.info("Realtime hub connected to Redis pub/sub")
         except Exception:
@@ -77,7 +80,12 @@ class OrderRealtimeHub:
 
     async def connect(self, vendor_id: int, websocket: WebSocket) -> None:
         await websocket.accept()
-        self._connections[vendor_id].add(websocket)
+        sockets = self._connections[vendor_id]
+        was_empty = not sockets
+        sockets.add(websocket)
+
+        if was_empty:
+            await self._subscribe_recipient(vendor_id)
 
     async def disconnect(self, vendor_id: int, websocket: WebSocket) -> None:
         sockets = self._connections.get(vendor_id)
@@ -87,6 +95,7 @@ class OrderRealtimeHub:
         sockets.discard(websocket)
         if not sockets:
             self._connections.pop(vendor_id, None)
+            await self._unsubscribe_recipient(vendor_id)
 
     async def send_json(self, websocket: WebSocket, payload: dict) -> None:
         await websocket.send_json(payload)
@@ -96,11 +105,16 @@ class OrderRealtimeHub:
             "type": event_type,
             "recipient_id": recipient_id,
             "order": order,
+            "origin": self._instance_id,
         }
 
         if self.redis_enabled:
             try:
-                await self._redis_client.publish(self._channel, json.dumps(message))
+                await self._redis_client.publish(
+                    self._recipient_channel(recipient_id),
+                    json.dumps(message),
+                )
+                await self._broadcast_local(recipient_id, message)
                 return
             except Exception:
                 logger.exception("Redis publish failed. Falling back to local broadcast.")
@@ -109,8 +123,9 @@ class OrderRealtimeHub:
 
     async def publish_many(self, recipient_ids: Iterable[int], event_type: str, order: dict) -> None:
         unique_recipient_ids = {recipient_id for recipient_id in recipient_ids if recipient_id}
-        for recipient_id in unique_recipient_ids:
-            await self.publish(recipient_id, event_type, order)
+        await asyncio.gather(
+            *(self.publish(recipient_id, event_type, order) for recipient_id in unique_recipient_ids)
+        )
 
     async def _listen_for_messages(self) -> None:
         try:
@@ -129,6 +144,9 @@ class OrderRealtimeHub:
                     logger.exception("Received invalid realtime payload from Redis")
                     continue
 
+                if payload.get("origin") == self._instance_id:
+                    continue
+
                 recipient_id = int(payload.get("recipient_id", 0))
                 if recipient_id <= 0:
                     continue
@@ -139,9 +157,44 @@ class OrderRealtimeHub:
         except Exception:
             logger.exception("Realtime Redis listener stopped unexpectedly")
 
+    def _recipient_channel(self, recipient_id: int) -> str:
+        return f"{self._channel_prefix}:{recipient_id}"
+
+    async def _subscribe_recipient(self, recipient_id: int) -> None:
+        channel = self._recipient_channel(recipient_id)
+        if not self.redis_enabled or channel in self._subscribed_channels:
+            return
+
+        async with self._subscription_lock:
+            if not self.redis_enabled or channel in self._subscribed_channels:
+                return
+
+            try:
+                await self._pubsub.subscribe(channel)
+                self._subscribed_channels.add(channel)
+            except Exception:
+                logger.exception("Failed to subscribe realtime recipient channel %s", channel)
+
+    async def _unsubscribe_recipient(self, recipient_id: int) -> None:
+        channel = self._recipient_channel(recipient_id)
+        if not self.redis_enabled or channel not in self._subscribed_channels:
+            return
+
+        async with self._subscription_lock:
+            if not self.redis_enabled or channel not in self._subscribed_channels:
+                return
+
+            try:
+                await self._pubsub.unsubscribe(channel)
+            except Exception:
+                logger.exception("Failed to unsubscribe realtime recipient channel %s", channel)
+            finally:
+                self._subscribed_channels.discard(channel)
+
     async def _broadcast_local(self, vendor_id: int, payload: dict) -> None:
         sockets = list(self._connections.get(vendor_id, ()))
         stale_sockets: list[WebSocket] = []
+        client_payload = {key: value for key, value in payload.items() if key != "origin"}
 
         for websocket in sockets:
             if websocket.client_state != WebSocketState.CONNECTED:
@@ -149,7 +202,7 @@ class OrderRealtimeHub:
                 continue
 
             try:
-                await websocket.send_json(payload)
+                await websocket.send_json(client_payload)
             except Exception:
                 stale_sockets.append(websocket)
 
@@ -159,7 +212,8 @@ class OrderRealtimeHub:
     async def _close_redis(self) -> None:
         if self._pubsub is not None:
             try:
-                await self._pubsub.unsubscribe(self._channel)
+                if self._subscribed_channels:
+                    await self._pubsub.unsubscribe(*sorted(self._subscribed_channels))
                 if hasattr(self._pubsub, "aclose"):
                     await self._pubsub.aclose()
                 else:
@@ -167,6 +221,7 @@ class OrderRealtimeHub:
             except Exception:
                 pass
             self._pubsub = None
+            self._subscribed_channels.clear()
 
         if self._redis_client is not None:
             try:

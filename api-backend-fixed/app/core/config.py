@@ -8,6 +8,17 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
 
 
+def _get_int_env(name: str, default: int) -> int:
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value == "":
+        return default
+
+    try:
+        return int(raw_value)
+    except ValueError:
+        return default
+
+
 def _build_database_url() -> str:
     database_url = os.getenv("DATABASE_URL")
     if database_url:
@@ -32,3 +43,6 @@ EMAIL_USER = os.getenv("EMAIL_USER", "")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
 EMAIL_FROM = os.getenv("EMAIL_FROM", f"API Vendor <{EMAIL_USER}>")
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-env")
+LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES = _get_int_env("LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES", 60)
+LOW_STOCK_NOTIFICATION_REPEAT_HOURS = _get_int_env("LOW_STOCK_NOTIFICATION_REPEAT_HOURS", 24)
+LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS = _get_int_env("LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS", 15)

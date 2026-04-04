@@ -12,11 +12,15 @@ async def serialize_order(
     db: AsyncSession,
     variant_cache: dict[int, Variant | None] | None = None,
     customer_cache: dict[int, User | None] | None = None,
+    vendor_cache: dict[int, User | None] | None = None,
+    include_vendor: bool = False,
 ) -> dict:
     if variant_cache is None:
         variant_cache = {}
     if customer_cache is None:
         customer_cache = {}
+    if vendor_cache is None:
+        vendor_cache = {}
 
     items_data = []
     for item in order.items:
@@ -50,6 +54,18 @@ async def serialize_order(
                 "address": customer.address,
             }
 
+    vendor_name = None
+    shop_name = None
+    if include_vendor and order.vendor_id:
+        if order.vendor_id not in vendor_cache:
+            result = await db.execute(select(User).where(User.id == order.vendor_id))
+            vendor_cache[order.vendor_id] = result.scalars().first()
+
+        vendor = vendor_cache[order.vendor_id]
+        if vendor is not None:
+            vendor_name = vendor.full_name
+            shop_name = vendor.shop_name
+
     return {
         "id": order.id,
         "customer_id": order.customer_id,
@@ -59,17 +75,34 @@ async def serialize_order(
         "vehicle_number": order.vehicle_number,
         "is_urgent": order.is_urgent,
         "created_at": order.created_at.isoformat() if order.created_at else None,
+        "vendor_id": order.vendor_id if include_vendor else None,
+        "vendor_name": vendor_name,
+        "shop_name": shop_name,
         "items": items_data,
     }
 
 
-async def serialize_orders(orders: list[Order], db: AsyncSession) -> list[dict]:
+async def serialize_orders(
+    orders: list[Order],
+    db: AsyncSession,
+    include_vendor: bool = False,
+) -> list[dict]:
     variant_cache: dict[int, Variant | None] = {}
     customer_cache: dict[int, User | None] = {}
+    vendor_cache: dict[int, User | None] = {}
     response = []
 
     for order in orders:
-        response.append(await serialize_order(order, db, variant_cache, customer_cache))
+        response.append(
+            await serialize_order(
+                order,
+                db,
+                variant_cache,
+                customer_cache,
+                vendor_cache,
+                include_vendor=include_vendor,
+            )
+        )
 
     return response
 

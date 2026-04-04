@@ -1,4 +1,4 @@
-const LOW_STOCK_LIMIT = 6
+const LOW_STOCK_LIMIT = 5
 const CRITICAL_STOCK_LIMIT = 2
 const DEMAND_WINDOW_DAYS = 7
 const ACTIVE_ORDER_STATUSES = new Set(["pending", "accepted", "packing", "out_for_delivery"])
@@ -76,11 +76,19 @@ function getRecentOrderStats(orders = []) {
   return statsMap
 }
 
-export function buildLowStockAlerts(inventory = [], orders = []) {
+export function buildLowStockAlerts(
+  inventory = [],
+  orders = [],
+  { lowStockThreshold = LOW_STOCK_LIMIT, lowStockAlertsEnabled = true } = {}
+) {
+  if (!lowStockAlertsEnabled) {
+    return []
+  }
+
   const orderStats = getRecentOrderStats(orders)
 
   return flattenInventory(inventory)
-    .filter((item) => item.stock <= LOW_STOCK_LIMIT)
+    .filter((item) => item.stock <= lowStockThreshold)
     .sort((left, right) => {
       const leftStats = orderStats.get(left.variantId) || {}
       const rightStats = orderStats.get(right.variantId) || {}
@@ -161,4 +169,22 @@ export function buildDemandSignals(inventory = [], orders = []) {
         description: `${stockRisk} ${recommendation}`.trim(),
       }
     })
+}
+
+export function buildVendorAlerts(
+  inventory = [],
+  orders = [],
+  { lowStockThreshold = LOW_STOCK_LIMIT, lowStockAlertsEnabled = true } = {}
+) {
+  const lowStockAlerts = buildLowStockAlerts(inventory, orders, {
+    lowStockThreshold,
+    lowStockAlertsEnabled,
+  })
+  const demandSignals = buildDemandSignals(inventory, orders)
+
+  return {
+    lowStockAlerts,
+    demandSignals,
+    totalAlerts: lowStockAlerts.length + demandSignals.length,
+  }
 }

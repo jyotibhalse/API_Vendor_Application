@@ -299,19 +299,29 @@ export default function Dashboard() {
       <div className="flex gap-[10px] px-5 pb-2 overflow-x-auto flex-shrink-0">
         <StatTile label="Revenue"      value={loadingStats ? "…" : `₹${(stats?.revenue || 0).toLocaleString("en-IN")}`} meta={activeFilter}                  color="amber" icon="💰" />
         <StatTile label="Orders"       value={loadingStats ? "…" : stats?.order_count ?? 0}                             meta={`${stats?.pending_count ?? 0} pending`} color="blue"  icon="🛒" />
-        <StatTile label="Low Stock"    value={loadingStats ? "…" : stats?.low_stock ?? 0}                               meta="Restock!"                      color="red"   icon="⚠️" />
+        <StatTile
+          label="Low Stock"
+          value={loadingStats ? "…" : stats?.low_stock ?? 0}
+          meta={
+            stats?.low_stock_alerts_enabled === false
+              ? "Alerts off"
+              : `Threshold: ${stats?.low_stock_threshold ?? vendor?.inventory_settings?.low_stock_threshold ?? 5}`
+          }
+          color="red"
+          icon="⚠️"
+        />
         <StatTile label="Out of Stock" value={loadingStats ? "…" : stats?.out_of_stock ?? 0}                            meta="variants"                      color="amber" icon="❌" />
       </div>
 
       {/* SCROLLABLE CONTENT */}
       <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-3">
 
-        {(stats?.low_stock ?? 0) > 0 && (
+        {(stats?.low_stock_notification_count ?? 0) > 0 && stats?.low_stock_alerts_enabled !== false && (
           <div className="flex items-center gap-3 p-3 rounded-2xl"
                style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.25)" }}>
             <AlertTriangle size={16} className="text-red-400 flex-shrink-0" />
             <p className="text-[12px] text-red-300">
-              {stats.low_stock} variant{stats.low_stock !== 1 ? "s" : ""} running low on stock
+              {stats.low_stock_notification_count} stock alert{stats.low_stock_notification_count !== 1 ? "s need" : " needs"} attention
             </p>
           </div>
         )}

@@ -33,6 +33,7 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   payment_updates: true,
   daily_summary: true,
   sound_enabled: true,
+  vibration_enabled: true,
   marketing_updates: false,
 }
 
@@ -580,7 +581,7 @@ export default function Profile() {
                           />
                           <ToggleRow
                             title="Low stock alerts"
-                            hint="Receive alerts when parts drop below your stock threshold."
+                            hint="Receive automated low-stock notifications when parts drop below your saved threshold."
                             checked={notificationSettings.low_stock_alerts}
                             onChange={() =>
                               handleNotificationChange(
@@ -619,6 +620,17 @@ export default function Profile() {
                               handleNotificationChange(
                                 "sound_enabled",
                                 !notificationSettings.sound_enabled
+                              )
+                            }
+                          />
+                          <ToggleRow
+                            title="Vibration alerts"
+                            hint="Vibrate supported devices when a new urgent order arrives."
+                            checked={notificationSettings.vibration_enabled}
+                            onChange={() =>
+                              handleNotificationChange(
+                                "vibration_enabled",
+                                !notificationSettings.vibration_enabled
                               )
                             }
                           />

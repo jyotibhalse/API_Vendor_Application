@@ -2,7 +2,8 @@ import { useEffect, useState } from "react"
 import { BarChart3, Flame, TriangleAlert } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../api/axios"
-import { buildDemandSignals, buildLowStockAlerts } from "../utils/alerts"
+import { useAuth } from "../context/AuthContext"
+import { buildVendorAlerts } from "../utils/alerts"
 
 const CARD_STYLES = {
   critical: {
@@ -32,6 +33,7 @@ const CARD_STYLES = {
 }
 
 export default function Alerts() {
+  const { user } = useAuth()
   const [lowStockAlerts, setLowStockAlerts] = useState([])
   const [demandSignals, setDemandSignals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -63,8 +65,11 @@ export default function Alerts() {
 
       const inventoryLoaded = inventoryResponse.status === "fulfilled"
       const ordersLoaded = ordersResponse.status === "fulfilled"
-      const nextLowStockAlerts = buildLowStockAlerts(inventory, orders)
-      const nextDemandSignals = buildDemandSignals(inventory, orders)
+      const { lowStockAlerts: nextLowStockAlerts, demandSignals: nextDemandSignals } =
+        buildVendorAlerts(inventory, orders, {
+          lowStockThreshold: user?.inventory_settings?.low_stock_threshold,
+          lowStockAlertsEnabled: user?.notification_settings?.low_stock_alerts !== false,
+        })
 
       setLowStockAlerts(nextLowStockAlerts)
       setDemandSignals(nextDemandSignals)
@@ -77,7 +82,7 @@ export default function Alerts() {
     return () => {
       active = false
     }
-  }, [])
+  }, [user?.inventory_settings?.low_stock_threshold, user?.notification_settings?.low_stock_alerts])
 
   const totalAlerts = lowStockAlerts.length + demandSignals.length
   const { inventoryLoaded, ordersLoaded } = loadState

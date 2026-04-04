@@ -30,6 +30,7 @@ class NotificationSettings(BaseModel):
     payment_updates: bool = True
     daily_summary: bool = True
     sound_enabled: bool = True
+    vibration_enabled: bool = True
     marketing_updates: bool = False
 
 

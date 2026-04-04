@@ -61,6 +61,7 @@ from app.models.product import Product
 from app.models.variant import Variant
 from app.models.order import Order
 from app.models.order_item import OrderItem
+from app.models.notification_log import NotificationLog
 
 from app.routes.inventory import router as inventory_router
 from app.routes.auth import router as auth_router
@@ -68,6 +69,7 @@ from app.routes.orders import router as orders_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.customer import router as customer_router
 from app.routes.realtime import router as realtime_router
+from app.core.low_stock_notifications import low_stock_notification_scheduler
 from app.core.realtime import order_realtime_hub
 from app.core.schema_updates import apply_startup_migrations
 
@@ -104,10 +106,12 @@ async def startup():
         await conn.run_sync(Base.metadata.create_all)
         await apply_startup_migrations(conn)
     await order_realtime_hub.startup()
+    await low_stock_notification_scheduler.startup()
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    await low_stock_notification_scheduler.shutdown()
     await order_realtime_hub.shutdown()
 
 

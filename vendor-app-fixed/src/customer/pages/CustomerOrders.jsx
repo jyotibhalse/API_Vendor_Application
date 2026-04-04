@@ -1,7 +1,19 @@
-import { CheckCircle, Clock, MapPin, Package, Search, Store, Truck, X, XCircle } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import {
+  CheckCircle,
+  Clock,
+  MapPin,
+  Package,
+  Search,
+  Store,
+  Truck,
+  X,
+  XCircle,
+} from "lucide-react"
 import api from "../../api/axios"
 import { useOrderRealtime } from "../../hooks/useOrderRealtime"
+
+const PAGE_SIZE = 20
 
 const STATUS_CONFIG = {
   pending: { label: "Pending", color: "#f4a623", bg: "rgba(244,166,35,0.12)", icon: Clock, step: 0 },
@@ -36,38 +48,42 @@ const TIMELINE_STEPS = [
   { key: "delivered", label: "Delivered", icon: MapPin },
 ]
 
-function stepIndex(key) {
-  const map = {
-    accepted: 1,
-    packing: 2,
-    out_for_delivery: 3,
-    delivered: 4,
-  }
-  return map[key] || 0
-}
-
 export default function CustomerOrders() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [resultCount, setResultCount] = useState(0)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [activeCount, setActiveCount] = useState(0)
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState("All")
+
+  const debounceRef = useRef(null)
   const activeFilterRef = useRef(activeFilter)
   const searchRef = useRef(search)
+  const ordersRef = useRef([])
+  const hasMoreRef = useRef(true)
+  const loadingMoreRef = useRef(false)
+  const requestSequenceRef = useRef(0)
+  const listRef = useRef(null)
 
-  useEffect(() => {
-    activeFilterRef.current = activeFilter
-    searchRef.current = search
+  const fetchOrders = async (filter, query, { reset = false, showLoader = true } = {}) => {
+    if (!reset && (!hasMoreRef.current || loadingMoreRef.current)) {
+      return
+    }
 
-    const timeoutId = setTimeout(() => {
-      fetchOrders(activeFilter, search)
-    }, 300)
-
-    return () => clearTimeout(timeoutId)
-  }, [activeFilter, search])
-
-  const fetchOrders = async (filter, query, { showLoader = true } = {}) => {
-    if (showLoader) {
-      setLoading(true)
+    const requestId = reset ? requestSequenceRef.current + 1 : requestSequenceRef.current
+    if (reset) {
+      requestSequenceRef.current = requestId
+      hasMoreRef.current = true
+      setHasMore(true)
+      if (showLoader) {
+        setLoading(true)
+      }
+    } else {
+      loadingMoreRef.current = true
+      setLoadingMore(true)
     }
 
     try {
@@ -82,15 +98,64 @@ export default function CustomerOrders() {
         params.append("search", query.trim())
       }
 
-      const suffix = params.toString()
-      const response = await api.get(`/customer/orders${suffix ? `?${suffix}` : ""}`)
-      setOrders(response.data)
+      params.append("limit", String(PAGE_SIZE))
+      params.append("offset", String(reset ? 0 : ordersRef.current.length))
+
+      const response = await api.get(`/customer/orders?${params.toString()}`)
+      if (requestId !== requestSequenceRef.current) {
+        return
+      }
+
+      const nextItems = response.data?.items || []
+      const nextOrders = reset ? nextItems : mergeOrders(ordersRef.current, nextItems)
+      const nextPagination = response.data?.pagination || {}
+      const nextSummary = response.data?.summary || {}
+
+      ordersRef.current = nextOrders
+      setOrders(nextOrders)
+      setResultCount(nextSummary.result_count ?? nextPagination.total ?? nextOrders.length)
+      setPendingCount(nextSummary.pending_count ?? countPendingOrders(nextOrders))
+      setActiveCount(nextSummary.active_count ?? countActiveOrders(nextOrders))
+
+      const nextHasMore = Boolean(nextPagination.has_more)
+      hasMoreRef.current = nextHasMore
+      setHasMore(nextHasMore)
     } catch (err) {
       console.log(err.response?.data || err.message)
     } finally {
-      setLoading(false)
+      if (reset) {
+        setLoading(false)
+      }
+      loadingMoreRef.current = false
+      setLoadingMore(false)
     }
   }
+
+  useEffect(() => {
+    activeFilterRef.current = activeFilter
+    fetchOrders(activeFilter, searchRef.current, { reset: true })
+  }, [activeFilter])
+
+  useEffect(() => {
+    searchRef.current = search
+  }, [search])
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!loading && !loadingMore && hasMore && listRef.current) {
+      const container = listRef.current
+      if (container.scrollHeight <= container.clientHeight + 80) {
+        fetchOrders(activeFilterRef.current, searchRef.current, { reset: false, showLoader: false })
+      }
+    }
+  }, [orders, hasMore, loading, loadingMore])
 
   useOrderRealtime({
     onEvent: (message) => {
@@ -98,12 +163,33 @@ export default function CustomerOrders() {
         return
       }
 
-      fetchOrders(activeFilterRef.current, searchRef.current, { showLoader: false })
+      fetchOrders(activeFilterRef.current, searchRef.current, { reset: true, showLoader: false })
     },
   })
 
-  const activeCount = orders.filter((order) => ["accepted", "packing", "out_for_delivery"].includes(order.status)).length
-  const pendingCount = orders.filter((order) => order.status === "pending").length
+  const handleSearchChange = (value) => {
+    setSearch(value)
+    searchRef.current = value
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+
+    debounceRef.current = setTimeout(() => {
+      fetchOrders(activeFilterRef.current, value, { reset: true })
+    }, 300)
+  }
+
+  const handleScroll = (event) => {
+    if (loading || loadingMore || !hasMore) {
+      return
+    }
+
+    const { scrollHeight, scrollTop, clientHeight } = event.currentTarget
+    if (scrollHeight - scrollTop - clientHeight < 220) {
+      fetchOrders(activeFilterRef.current, searchRef.current, { reset: false, showLoader: false })
+    }
+  }
 
   return (
     <div className="flex flex-col h-full bg-bg animate-fadeUp">
@@ -114,7 +200,7 @@ export default function CustomerOrders() {
         <div>
           <div className="font-syne font-extrabold text-[22px] text-text">My Orders</div>
           <div className="text-[12px] text-text-muted">
-            {orders.length} result{orders.length !== 1 ? "s" : ""}
+            {resultCount} result{resultCount !== 1 ? "s" : ""}
           </div>
         </div>
         <div className="flex gap-2">
@@ -146,12 +232,12 @@ export default function CustomerOrders() {
           <input
             type="text"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => handleSearchChange(event.target.value)}
             placeholder="Search by order ID or vehicle number..."
             className="flex-1 bg-transparent py-[9px] text-[12px] text-text placeholder:text-text-faint outline-none"
           />
           {search && (
-            <button type="button" onClick={() => setSearch("")}>
+            <button type="button" onClick={() => handleSearchChange("")}>
               <X size={13} className="text-text-muted hover:text-text" />
             </button>
           )}
@@ -175,8 +261,8 @@ export default function CustomerOrders() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5">
-        {loading ? (
+      <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-5 pb-5">
+        {loading && orders.length === 0 ? (
           <div className="text-[13px] text-text-muted text-center mt-10">Loading orders...</div>
         ) : orders.length === 0 ? (
           <div className="text-center mt-16">
@@ -187,10 +273,32 @@ export default function CustomerOrders() {
               <Store size={20} />
             </div>
             <div className="text-[15px] font-semibold text-text">No orders yet</div>
-            <div className="text-[12px] text-text-muted mt-1">Placed KOT orders will appear here with live status updates.</div>
+            <div className="text-[12px] text-text-muted mt-1">
+              Placed KOT orders will appear here with live status updates.
+            </div>
           </div>
         ) : (
-          orders.map((order) => <CustomerOrderCard key={order.id} order={order} />)
+          <>
+            {orders.map((order) => (
+              <CustomerOrderCard key={order.id} order={order} />
+            ))}
+
+            {loadingMore && (
+              <div className="py-3 text-center text-[12px] text-text-muted">Loading more orders...</div>
+            )}
+
+            {!hasMore && resultCount > orders.length && (
+              <div className="py-3 text-center text-[12px] text-text-muted">
+                Loaded {orders.length} of {resultCount} orders
+              </div>
+            )}
+
+            {!hasMore && resultCount === orders.length && resultCount > PAGE_SIZE && (
+              <div className="py-3 text-center text-[12px] text-text-muted">
+                All {resultCount} orders loaded
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -207,12 +315,17 @@ function CustomerOrderCard({ order }) {
   const isDelivered = order.status === "delivered"
 
   return (
-    <div className="rounded-2xl mb-[10px] overflow-hidden" style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
+    <div
+      className="rounded-2xl mb-[10px] overflow-hidden"
+      style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
+    >
       <div className="p-[14px]">
         <div className="flex justify-between items-start mb-[6px] gap-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="font-syne font-bold text-[15px] text-accent">#{String(order.id).padStart(4, "0")}</div>
+              <div className="font-syne font-bold text-[15px] text-accent">
+                #{String(order.id).padStart(4, "0")}
+              </div>
               {order.is_urgent && (
                 <span className="text-[10px] font-bold px-[7px] py-[2px] rounded-full bg-red-500/20 text-red-400">
                   URGENT
@@ -244,7 +357,9 @@ function CustomerOrderCard({ order }) {
                 <div className="text-[12px] text-text font-semibold truncate">
                   {item.vehicle_model || `Variant ${item.variant_id}`}
                 </div>
-                <div className="text-[10px] text-text-muted mt-[2px]">Unit: Rs {Number(item.price || 0).toLocaleString("en-IN")}</div>
+                <div className="text-[10px] text-text-muted mt-[2px]">
+                  Unit: Rs {Number(item.price || 0).toLocaleString("en-IN")}
+                </div>
               </div>
               <div className="text-[12px] font-bold text-accent">x {item.quantity}</div>
             </div>
@@ -277,11 +392,24 @@ function CustomerOrderCard({ order }) {
                     <div
                       className="w-[26px] h-[26px] rounded-full flex items-center justify-center transition-all"
                       style={{
-                        background: done || active ? (done ? "#f4a623" : "rgba(244,166,35,0.2)") : "rgb(var(--color-surface-2))",
+                        background: done || active
+                          ? done
+                            ? "#f4a623"
+                            : "rgba(244,166,35,0.2)"
+                          : "rgb(var(--color-surface-2))",
                         border: `2px solid ${done || active ? "#f4a623" : "rgb(var(--color-border))"}`,
                       }}
                     >
-                      <Icon size={11} color={done ? "rgb(var(--color-bg))" : active ? "#f4a623" : "rgb(var(--color-text-faint))"} />
+                      <Icon
+                        size={11}
+                        color={
+                          done
+                            ? "rgb(var(--color-bg))"
+                            : active
+                              ? "#f4a623"
+                              : "rgb(var(--color-text-faint))"
+                        }
+                      />
                     </div>
                     <span
                       className="text-[9px] font-semibold text-center leading-tight whitespace-nowrap"
@@ -333,3 +461,34 @@ function CustomerOrderCard({ order }) {
   )
 }
 
+function stepIndex(key) {
+  const map = {
+    accepted: 1,
+    packing: 2,
+    out_for_delivery: 3,
+    delivered: 4,
+  }
+  return map[key] || 0
+}
+
+function countPendingOrders(orders) {
+  return orders.filter((order) => order.status === "pending").length
+}
+
+function countActiveOrders(orders) {
+  return orders.filter((order) => ["accepted", "packing", "out_for_delivery"].includes(order.status)).length
+}
+
+function mergeOrders(currentOrders, nextOrders) {
+  const nextById = new Map(nextOrders.map((order) => [order.id, order]))
+  const currentIds = new Set(currentOrders.map((order) => order.id))
+  const merged = currentOrders.map((order) => nextById.get(order.id) || order)
+
+  nextOrders.forEach((order) => {
+    if (!currentIds.has(order.id)) {
+      merged.push(order)
+    }
+  })
+
+  return merged
+}

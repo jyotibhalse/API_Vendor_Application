@@ -24,7 +24,7 @@ def _build_database_url() -> str:
     if database_url:
         return database_url
 
-    db_user = os.getenv("POSTGRES_USER", "postgres")
+    db_user = os.getenv("POSTGRES_USER", "shubhambhalse")
     db_password = os.getenv("POSTGRES_PASSWORD", "")
     db_host = os.getenv("POSTGRES_HOST", "localhost")
     db_port = os.getenv("POSTGRES_PORT", "5432")

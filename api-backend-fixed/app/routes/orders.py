@@ -1,10 +1,9 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import case, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
+from typing import Optional
 
 from app.core.database import get_db
 from app.core.order_serialization import get_order_payload, serialize_orders
@@ -12,46 +11,21 @@ from app.core.realtime import order_realtime_hub
 from app.core.security import require_role
 from app.models.order import Order
 from app.models.order_item import OrderItem
-from app.models.user import User
 from app.models.variant import Variant
+from app.models.user import User
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 vendor_only = require_role("vendor")
 
-ACTIVE_ORDER_STATUSES = ("accepted", "packing", "out_for_delivery")
+# ── Valid status transitions ──────────────────────────────────────────────────
 VALID_TRANSITIONS = {
-    "pending": ["accepted", "rejected"],
-    "accepted": ["packing", "rejected"],
-    "packing": ["out_for_delivery"],
+    "pending":          ["accepted", "rejected"],
+    "accepted":         ["packing",  "rejected"],
+    "packing":          ["out_for_delivery"],
     "out_for_delivery": ["delivered"],
-    "delivered": [],
-    "rejected": [],
+    "delivered":        [],
+    "rejected":         [],
 }
-
-
-def _build_vendor_order_filters(vendor_id: int, status: str | None, search: str | None) -> list:
-    filters = [Order.vendor_id == vendor_id]
-
-    if status:
-        filters.append(Order.status == status)
-
-    if search:
-        needle = search.strip()
-        if needle:
-            if needle.isdigit():
-                filters.append(Order.id == int(needle))
-            else:
-                filters.append(Order.vehicle_number.ilike(f"%{needle}%"))
-
-    return filters
-
-
-def _order_sorting():
-    return (
-        case((Order.status == "delivered", 1), else_=0),
-        Order.created_at.desc(),
-        Order.id.desc(),
-    )
 
 
 @router.post("/")
@@ -100,57 +74,70 @@ async def create_order(
 async def get_orders(
     status: Optional[str] = None,
     search: Optional[str] = None,
-    limit: int | None = Query(default=None, ge=1, le=100),
+    limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(vendor_only),
 ):
-    filters = _build_vendor_order_filters(current_user.id, status, search)
+    # ── Base query ────────────────────────────────────────────────
+    base_where = [Order.vendor_id == current_user.id]
+    if status:
+        base_where.append(Order.status == status)
+
+    # ── Total count (for pagination meta) ────────────────────────
+    count_result = await db.execute(
+        select(func.count()).select_from(Order).where(*base_where)
+    )
+    total = count_result.scalar()
+
+    # ── Fetch page ────────────────────────────────────────────────
     query = (
         select(Order)
-        .where(*filters)
+        .where(*base_where)
         .options(selectinload(Order.items))
-        .order_by(*_order_sorting())
+        .order_by(Order.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
 
-    if limit is None:
-        result = await db.execute(query)
-        orders = result.scalars().all()
-        return await serialize_orders(orders, db)
+    result = await db.execute(query)
+    orders = result.scalars().all()
 
-    summary_result = await db.execute(
-        select(
-            func.count(Order.id).label("total"),
-            func.coalesce(
-                func.sum(case((Order.status == "pending", 1), else_=0)),
-                0,
-            ).label("pending_count"),
-            func.coalesce(
-                func.sum(case((Order.status.in_(ACTIVE_ORDER_STATUSES), 1), else_=0)),
-                0,
-            ).label("active_count"),
-        ).where(*filters)
-    )
-    summary = summary_result.one()
-    total = int(summary.total or 0)
+    # ── Search filter (by Order ID or VRN) in-Python ──────────────
+    # Only applied when search is provided. For search we fetch a
+    # wider result set and filter, then re-slice, so we override
+    # limit/offset when search is active.
+    if search:
+        s = search.strip()
+        # Fetch all matching orders for the search (no pagination)
+        all_query = (
+            select(Order)
+            .where(*base_where)
+            .options(selectinload(Order.items))
+            .order_by(Order.created_at.desc())
+        )
+        all_result = await db.execute(all_query)
+        all_orders = all_result.scalars().all()
 
-    paged_result = await db.execute(query.offset(offset).limit(limit))
-    orders = paged_result.scalars().all()
-    items = await serialize_orders(orders, db)
+        if s.isdigit():
+            orders = [o for o in all_orders if o.id == int(s)]
+        else:
+            orders = [o for o in all_orders if o.vehicle_number and s.lower() in o.vehicle_number.lower()]
+
+        total = len(orders)
+        orders = orders[offset: offset + limit]
+
+    # Delivered orders go to the bottom
+    orders = sorted(orders, key=lambda o: o.status == "delivered")
+
+    serialized = await serialize_orders(orders, db)
 
     return {
-        "items": items,
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": offset + len(items) < total,
-        },
-        "summary": {
-            "result_count": total,
-            "pending_count": int(summary.pending_count or 0),
-            "active_count": int(summary.active_count or 0),
-        },
+        "orders": serialized,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": (offset + limit) < total,
     }
 
 
@@ -175,8 +162,8 @@ async def accept_order(
     items = result.scalars().all()
 
     for item in items:
-        variant_result = await db.execute(select(Variant).where(Variant.id == item.variant_id))
-        variant = variant_result.scalars().first()
+        v_result = await db.execute(select(Variant).where(Variant.id == item.variant_id))
+        variant = v_result.scalars().first()
 
         if variant.stock < item.quantity:
             raise HTTPException(status_code=400, detail=f"Insufficient stock for variant {variant.id}")
@@ -233,6 +220,11 @@ async def update_order_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(vendor_only),
 ):
+    """
+    Advance order through the lifecycle:
+      pending → accepted → packing → out_for_delivery → delivered
+    Rejection is allowed from pending or accepted only.
+    """
     result = await db.execute(
         select(Order).where(Order.id == order_id, Order.vendor_id == current_user.id)
     )
@@ -245,10 +237,8 @@ async def update_order_status(
     if status not in allowed:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"Cannot move order from '{order.status}' to '{status}'. "
-                f"Allowed next states: {allowed}"
-            ),
+            detail=f"Cannot move order from '{order.status}' to '{status}'. "
+                   f"Allowed next states: {allowed}"
         )
 
     order.status = status

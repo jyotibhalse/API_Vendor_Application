@@ -5,6 +5,8 @@ import { getHomeRoute } from "../utils/auth"
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
   const { user, loading } = useAuth()
   const location = useLocation()
+  const loginRoute =
+    allowedRoles.length === 1 && allowedRoles[0] === "admin" ? "/admin/login" : "/login"
 
   if (loading) {
     return (
@@ -15,7 +17,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+    return <Navigate to={loginRoute} replace state={{ from: location.pathname }} />
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {

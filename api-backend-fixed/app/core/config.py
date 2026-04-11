@@ -19,6 +19,17 @@ def _get_int_env(name: str, default: int) -> int:
         return default
 
 
+def _get_float_env(name: str, default: float) -> float:
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value == "":
+        return default
+
+    try:
+        return float(raw_value)
+    except ValueError:
+        return default
+
+
 def _build_database_url() -> str:
     database_url = os.getenv("DATABASE_URL")
     if database_url:
@@ -43,6 +54,10 @@ EMAIL_USER = os.getenv("EMAIL_USER", "")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
 EMAIL_FROM = os.getenv("EMAIL_FROM", f"API Vendor <{EMAIL_USER}>")
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-env")
+DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@autoparts.local")
+DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin@123")
+DEFAULT_PLATFORM_COMMISSION_RATE = _get_float_env("DEFAULT_PLATFORM_COMMISSION_RATE", 8.0)
+DEFAULT_PLATFORM_FLAT_FEE = _get_float_env("DEFAULT_PLATFORM_FLAT_FEE", 0.0)
 LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES = _get_int_env("LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES", 60)
 LOW_STOCK_NOTIFICATION_REPEAT_HOURS = _get_int_env("LOW_STOCK_NOTIFICATION_REPEAT_HOURS", 24)
 LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS = _get_int_env("LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS", 15)

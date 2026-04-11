@@ -27,7 +27,9 @@ function ActionDot() {
   )
 }
 
-function HeaderAction({ to, end = false, icon: Icon, label, showDot = false, onClick }) {
+function HeaderAction({ to, end = false, icon, label, showDot = false, onClick }) {
+  const IconComponent = icon
+
   if (onClick) {
     return (
       <button
@@ -38,7 +40,7 @@ function HeaderAction({ to, end = false, icon: Icon, label, showDot = false, onC
         className={actionClassName(false)}
         style={INACTIVE_ACTION_STYLE}
       >
-        <Icon size={15} strokeWidth={2.2} />
+        <IconComponent size={15} strokeWidth={2.2} />
         {showDot && <ActionDot />}
       </button>
     )
@@ -53,7 +55,7 @@ function HeaderAction({ to, end = false, icon: Icon, label, showDot = false, onC
       className={({ isActive }) => actionClassName(isActive)}
       style={({ isActive }) => (isActive ? undefined : INACTIVE_ACTION_STYLE)}
     >
-      <Icon size={15} strokeWidth={2.2} />
+      <IconComponent size={15} strokeWidth={2.2} />
       {showDot && <ActionDot />}
     </NavLink>
   )

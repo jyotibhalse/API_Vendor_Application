@@ -48,6 +48,7 @@ export default function Login() {
   }, [location.state])
 
   const currentRole = ROLE_META[role]
+  const infoMessage = location.state?.infoMessage
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -102,6 +103,15 @@ export default function Login() {
           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}
         >
           {error}
+        </div>
+      )}
+
+      {infoMessage && !error && (
+        <div
+          className="mb-4 px-4 py-3 rounded-2xl text-[13px] text-accent"
+          style={{ background: "rgba(244,166,35,0.08)", border: "1px solid rgba(244,166,35,0.2)" }}
+        >
+          {infoMessage}
         </div>
       )}
 
@@ -160,6 +170,12 @@ export default function Login() {
       <p className="text-center text-[12px] text-text-muted mt-2">
         <Link to="/forgot-password" className="text-text-muted hover:text-accent transition-colors">
           Forgot password?
+        </Link>
+      </p>
+
+      <p className="text-center text-[12px] text-text-muted mt-2">
+        <Link to="/admin/login" className="text-accent font-semibold">
+          Admin access
         </Link>
       </p>
     </div>

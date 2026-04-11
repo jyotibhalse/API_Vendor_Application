@@ -1,4 +1,5 @@
-from sqlalchemy import Boolean, Column, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
+from sqlalchemy.sql import func
 from app.core.database import Base
 
 class User(Base):
@@ -15,5 +16,9 @@ class User(Base):
     phone = Column(String, nullable=True)
     address = Column(String, nullable=True)
     role = Column(String, default="vendor")  # vendor | customer | admin
+    approval_status = Column(String, default="approved")  # pending | approved | rejected
+    approval_notes = Column(Text, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    commission_rate = Column(Float, nullable=True)  # per-vendor override
     inventory_settings = Column(Text, nullable=True)
     notification_settings = Column(Text, nullable=True)

@@ -18,8 +18,9 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       sessionStorage.removeItem("token")
       sessionStorage.removeItem("user")
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login"
+      const loginRoute = window.location.pathname.startsWith("/admin") ? "/admin/login" : "/login"
+      if (window.location.pathname !== loginRoute) {
+        window.location.href = loginRoute
       }
     }
     return Promise.reject(error)

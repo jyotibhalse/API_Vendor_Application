@@ -1,3 +1,11 @@
 export function getHomeRoute(role) {
-  return role === "customer" ? "/customer" : "/"
+  if (role === "customer") {
+    return "/customer"
+  }
+
+  if (role === "admin") {
+    return "/admin"
+  }
+
+  return "/"
 }

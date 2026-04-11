@@ -6,6 +6,8 @@ import CustomerInventory from "../customer/pages/CustomerInventory"
 import CustomerOrders from "../customer/pages/CustomerOrders"
 import CustomerProfile from "../customer/pages/CustomerProfile"
 import Alerts from "../pages/Alerts"
+import AdminLogin from "../pages/AdminLogin"
+import AdminPanel from "../pages/AdminPanel"
 import Dashboard from "../pages/Dashboard"
 import ForgotPassword from "../pages/Forgotpassword"
 import Inventory from "../pages/Inventory"
@@ -21,10 +23,20 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/register" element={<Registration />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/verify-otp" element={<VerifyOTP />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminPanel />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/customer"

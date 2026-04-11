@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
+
 
 class UserCreate(BaseModel):
     email: str
@@ -58,6 +60,10 @@ class UserResponse(BaseModel):
     address: Optional[str] = None
     role: str
     is_active: bool
+    approval_status: str = "approved"
+    approval_notes: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    commission_rate: Optional[float] = None
     inventory_settings: InventorySettings = Field(default_factory=InventorySettings)
     notification_settings: NotificationSettings = Field(default_factory=NotificationSettings)
 

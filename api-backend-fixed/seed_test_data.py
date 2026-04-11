@@ -4,10 +4,12 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal, Base, engine
+from app.core.admin_setup import ensure_admin_setup
 from app.core.security import hash_password
 from app.models.brand import Brand
 from app.models.order import Order
 from app.models.order_item import OrderItem
+from app.models.platform_setting import PlatformSetting
 from app.models.product import Product
 from app.models.user import User
 from app.models.variant import Variant
@@ -119,6 +121,8 @@ async def get_or_create_vendor(session):
             shop_name=DEFAULT_VENDOR["shop_name"],
             phone=DEFAULT_VENDOR["phone"],
             role="vendor",
+            approval_status="approved",
+            approved_at=datetime.now(timezone.utc),
             is_active=True,
         )
         session.add(vendor)
@@ -262,6 +266,7 @@ async def main():
         await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSessionLocal() as session:
+        await ensure_admin_setup(session)
         vendor, created_vendor = await get_or_create_vendor(session)
         variant_lookup = await seed_inventory(session, vendor.id)
         created_orders = await seed_orders(session, vendor.id, variant_lookup)

@@ -315,7 +315,7 @@ import json
 import random
 import string
 import smtplib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -376,9 +376,40 @@ def serialize_user(user: User) -> dict:
         "address": user.address,
         "role": user.role,
         "is_active": user.is_active,
+        "approval_status": user.approval_status or "approved",
+        "approval_notes": user.approval_notes,
+        "approved_at": user.approved_at,
+        "commission_rate": user.commission_rate,
         "inventory_settings": parse_settings(user.inventory_settings, InventorySettings),
         "notification_settings": parse_settings(user.notification_settings, NotificationSettings),
     }
+
+
+def validate_portal_login(user: User) -> None:
+    if user.role == "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin accounts must use the dedicated admin login.",
+        )
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="This account is inactive.")
+
+    if user.role != "vendor":
+        return
+
+    approval_status = user.approval_status or "approved"
+    if approval_status == "approved":
+        return
+
+    if approval_status == "pending":
+        raise HTTPException(
+            status_code=403,
+            detail="Your vendor account is waiting for admin approval.",
+        )
+
+    detail = user.approval_notes or "Your vendor account was rejected by admin review."
+    raise HTTPException(status_code=403, detail=detail)
 
 
 def generate_otp() -> str:
@@ -445,6 +476,8 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
         phone=user.phone,
         address=user.address,
         role=user.role,
+        approval_status="pending" if user.role == "vendor" else "approved",
+        approved_at=datetime.now(timezone.utc) if user.role == "customer" else None,
     )
     db.add(new_user)
     await db.commit()
@@ -467,6 +500,7 @@ async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
+    validate_portal_login(db_user)
     access_token = create_access_token(data={"sub": db_user.email})
     return {
         "access_token": access_token,

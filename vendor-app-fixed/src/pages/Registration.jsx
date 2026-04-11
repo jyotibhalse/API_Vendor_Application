@@ -93,6 +93,10 @@ export default function Registration() {
         state: {
           preferredRole: role,
           email: form.email,
+          infoMessage:
+            role === "vendor"
+              ? "Vendor registration submitted. An admin must approve your account before you can sign in."
+              : "Account created successfully. You can sign in now.",
         },
       })
     } catch (err) {

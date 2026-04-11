@@ -54,6 +54,8 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from app.core.database import engine, Base
+from app.core.admin_setup import ensure_admin_setup
+from app.core.database import AsyncSessionLocal
 
 from app.models.user import User
 from app.models.brand import Brand
@@ -62,9 +64,11 @@ from app.models.variant import Variant
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.notification_log import NotificationLog
+from app.models.platform_setting import PlatformSetting
 
 from app.routes.inventory import router as inventory_router
 from app.routes.auth import router as auth_router
+from app.routes.admin import router as admin_router
 from app.routes.orders import router as orders_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.customer import router as customer_router
@@ -89,6 +93,7 @@ app.add_middleware(
 
 # ── API routers ───────────────────────────────────────────────────────────────
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(inventory_router)
 app.include_router(orders_router)
 app.include_router(dashboard_router)
@@ -105,6 +110,8 @@ async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await apply_startup_migrations(conn)
+    async with AsyncSessionLocal() as session:
+        await ensure_admin_setup(session)
     await order_realtime_hub.startup()
     await low_stock_notification_scheduler.startup()
 

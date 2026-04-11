@@ -29,6 +29,16 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => readStoredUser())
   const [loading, setLoading] = useState(true)
 
+  const commitSession = (payload, fallbackUser = null) => {
+    const nextUser = payload.user ?? fallbackUser
+
+    sessionStorage.setItem("token", payload.access_token)
+    persistUser(nextUser)
+    setUser(nextUser)
+
+    return nextUser
+  }
+
   useEffect(() => {
     const token = sessionStorage.getItem("token")
     if (!token) {
@@ -83,10 +93,21 @@ export function AuthProvider({ children }) {
       )
     }
 
-    sessionStorage.setItem("token", response.data.access_token)
-    persistUser(nextUser)
-    setUser(nextUser)
-    return nextUser
+    return commitSession(response.data, nextUser)
+  }
+
+  const loginAdmin = async (email, password) => {
+    const response = await api.post("/admin/login", { email, password })
+    const nextUser = response.data.user ?? {
+      email,
+      role: "admin",
+    }
+
+    if (nextUser.role !== "admin") {
+      throw new Error("This account is not configured for admin access.")
+    }
+
+    return commitSession(response.data, nextUser)
   }
 
   const refreshUser = async () => {
@@ -103,7 +124,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, refreshUser }}>
+    <AuthContext.Provider value={{ user, login, loginAdmin, logout, loading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

@@ -374,7 +374,7 @@ export default function AdminPanel() {
                   Approvals, revenue, and commission
                 </h1>
                 <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-text-muted sm:text-[13px]">
-                  Review new vendors, monitor earnings across the marketplace, and adjust platform fees without leaving the app&apos;s existing visual system.
+                  Review new vendors, monitor earnings across the marketplace, and adjust platform fees without leaving the app&apos;s existing visual system. Revenue and platform earnings are recognized only after delivery.
                 </p>
                 <div className="mt-4 text-[12px] text-text-muted sm:text-[13px]">
                   Signed in as <span className="font-semibold text-text">{user?.full_name || user?.email || "Admin"}</span>
@@ -751,7 +751,7 @@ export default function AdminPanel() {
                 </div>
                 <div className="mt-2 font-syne text-[20px] font-bold text-text">Vendor performance and overrides</div>
                 <div className="mt-1 text-[12px] text-text-muted">
-                  Review revenue across all vendors and adjust platform fee overrides per account.
+                  Review delivered-order revenue across all vendors and adjust platform fee overrides per account.
                 </div>
               </div>
               <div className="text-[12px] text-text-muted">

@@ -5,6 +5,18 @@ import api from "../api/axios"
 import { useAuth } from "../context/AuthContext"
 import { buildVendorAlerts } from "../utils/alerts"
 
+function normalizeOrdersResponse(payload) {
+  if (Array.isArray(payload)) {
+    return payload
+  }
+
+  if (Array.isArray(payload?.orders)) {
+    return payload.orders
+  }
+
+  return []
+}
+
 const CARD_STYLES = {
   critical: {
     icon: TriangleAlert,
@@ -58,10 +70,9 @@ export default function Alerts() {
         inventoryResponse.status === "fulfilled" && Array.isArray(inventoryResponse.value.data)
           ? inventoryResponse.value.data
           : []
-      const orders =
-        ordersResponse.status === "fulfilled" && Array.isArray(ordersResponse.value.data)
-          ? ordersResponse.value.data
-          : []
+      const orders = normalizeOrdersResponse(
+        ordersResponse.status === "fulfilled" ? ordersResponse.value.data : null
+      )
 
       const inventoryLoaded = inventoryResponse.status === "fulfilled"
       const ordersLoaded = ordersResponse.status === "fulfilled"

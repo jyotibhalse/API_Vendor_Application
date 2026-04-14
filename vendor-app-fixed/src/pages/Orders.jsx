@@ -159,14 +159,13 @@ export default function Orders() {
   const active  = orders.filter(o => ["accepted", "packing", "out_for_delivery"].includes(o.status)).length
 
   return (
-    <div className="flex flex-col h-full bg-bg animate-fadeUp">
+    <div className="flex flex-col h-full bg-white dark:bg-bg text-black dark:text-white animate-fadeUp">
 
       {/* Header */}
-      <div className="px-5 pt-4 pb-3 flex-shrink-0 flex items-center justify-between"
-           style={{ borderBottom: "1px solid #252830" }}>
+      <div className="px-5 pt-4 pb-3 flex-shrink-0 flex items-center justify-between border-b border-gray-200 dark:border-[#252830]">
         <div>
-          <div className="font-syne font-extrabold text-[22px] text-white">Orders</div>
-          <div className="text-[12px] text-[#9ca3af]">
+          <div className="font-syne font-extrabold text-[22px] text-black dark:text-white">Orders</div>
+          <div className="text-[12px] text-gray-600 dark:text-[#9ca3af]">
             {loading ? "Loading…" : `${total} order${total !== 1 ? "s" : ""}`}
           </div>
         </div>
@@ -188,18 +187,17 @@ export default function Orders() {
 
       {/* Search */}
       <div className="px-5 pt-3 pb-1 flex-shrink-0">
-        <div className="flex items-center gap-2 px-3 rounded-xl"
-             style={{ background: "#141618", border: "1px solid #252830" }}>
-          <Search size={14} className="text-[#9ca3af] flex-shrink-0" />
+        <div className="flex items-center gap-2 px-3 rounded-xl bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830]">
+          <Search size={14} className="text-gray-500 dark:text-[#9ca3af] flex-shrink-0" />
           <input
             type="text" value={search}
             onChange={e => handleSearchChange(e.target.value)}
             placeholder="Search by Order ID or Vehicle Reg No…"
-            className="flex-1 bg-transparent py-[9px] text-[12px] text-white placeholder-[#94a3b8] outline-none"
+            className="flex-1 bg-transparent py-[9px] text-[12px] text-black dark:text-white placeholder-gray-400 outline-none"
           />
           {search && (
             <button onClick={() => handleSearchChange("")}>
-              <X size={13} className="text-[#9ca3af] hover:text-white" />
+              <X size={13} className="text-gray-500 dark:text-[#9ca3af] hover:text-black dark:hover:text-white" />
             </button>
           )}
         </div>
@@ -212,7 +210,7 @@ export default function Orders() {
             className={`px-[12px] py-[5px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-all
               ${activeFilter === f
                 ? "bg-accent text-black border-accent"
-                : "bg-surface2 text-[#9ca3af] border-[#252830]"}`}>
+                : "bg-gray-100 dark:bg-surface2 text-gray-700 dark:text-[#9ca3af] border-gray-200 dark:border-[#252830]"}`}>
             {f}
           </button>
         ))}
@@ -221,14 +219,14 @@ export default function Orders() {
       {/* Orders list */}
       <div className="flex-1 overflow-y-auto px-5 pb-5">
         {loading ? (
-          <div className="flex items-center justify-center mt-10 gap-2 text-[13px] text-[#9ca3af]">
+          <div className="flex items-center justify-center mt-10 gap-2 text-[13px] text-gray-600 dark:text-[#9ca3af]">
             <Loader size={14} className="animate-spin" /> Loading orders…
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center mt-16">
             <div className="text-5xl mb-4">🛒</div>
-            <div className="text-[15px] font-semibold text-white">No orders found</div>
-            <div className="text-[12px] text-[#9ca3af] mt-1">Try adjusting your search or filter</div>
+            <div className="text-[15px] font-semibold text-black dark:text-white">No orders found</div>
+            <div className="text-[12px] text-gray-600 dark:text-[#9ca3af] mt-1">Try adjusting your search or filter</div>
           </div>
         ) : (
           <>
@@ -245,14 +243,14 @@ export default function Orders() {
 
             {/* Loading more spinner */}
             {loadingMore && (
-              <div className="flex items-center justify-center py-4 gap-2 text-[12px] text-[#9ca3af]">
+              <div className="flex items-center justify-center py-4 gap-2 text-[12px] text-gray-600 dark:text-[#9ca3af]">
                 <Loader size={13} className="animate-spin" /> Loading more…
               </div>
             )}
 
             {/* End of list message */}
             {!hasMore && orders.length > 0 && total > PAGE_SIZE && (
-              <div className="text-center py-4 text-[11px] text-[#9ca3af]">
+              <div className="text-center py-4 text-[11px] text-gray-600 dark:text-[#9ca3af]">
                 All {total} orders loaded
               </div>
             )}
@@ -299,8 +297,7 @@ function OrderCard({ order, onRefresh }) {
   const currentStep = s.step
 
   return (
-    <div className="rounded-2xl mb-[10px] overflow-hidden"
-         style={{ background: "#141618", border: "1px solid #252830" }}>
+    <div className="rounded-2xl mb-[10px] overflow-hidden bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830]">
 
       {/* Card top */}
       <div className="p-[14px]">
@@ -317,28 +314,27 @@ function OrderCard({ order, onRefresh }) {
               </span>
             )}
           </div>
-          <div className="font-syne font-extrabold text-[16px] text-white">
+          <div className="font-syne font-extrabold text-[16px] text-black dark:text-white">
             ₹{(order.total_amount || 0).toLocaleString("en-IN")}
           </div>
         </div>
 
         {/* VRN */}
         {order.vehicle_number && (
-          <div className="text-[11px] text-[#9ca3af] mb-[5px]">🚗 {order.vehicle_number}</div>
+          <div className="text-[11px] text-gray-600 dark:text-[#9ca3af] mb-[5px]">🚗 {order.vehicle_number}</div>
         )}
 
         {/* Parts */}
-        <div className="text-[12px] text-[#9ca3af] mb-[10px] truncate">{parts}</div>
+        <div className="text-[12px] text-gray-600 dark:text-[#9ca3af] mb-[10px] truncate">{parts}</div>
 
         {/* Customer details — collapsible */}
         <button
           onClick={() => setExpanded(v => !v)}
-          className="w-full rounded-[14px] px-[12px] py-[8px] mb-[10px] text-left transition-all"
-          style={{ background: "#101214", border: "1px solid #252830" }}
+          className="w-full rounded-[14px] px-[12px] py-[8px] mb-[10px] text-left transition-all bg-gray-50 dark:bg-[#101214] border border-gray-200 dark:border-[#252830]"
         >
           <div className="flex items-center justify-between">
-            <div className="text-[10px] uppercase tracking-[0.5px] text-[#9ca3af]">Customer Details</div>
-            <span className="text-[10px] text-[#9ca3af]">{expanded ? "▲ hide" : "▼ show"}</span>
+            <div className="text-[10px] uppercase tracking-[0.5px] text-gray-600 dark:text-[#9ca3af]">Customer Details</div>
+            <span className="text-[10px] text-gray-600 dark:text-[#9ca3af]">{expanded ? "▲ hide" : "▼ show"}</span>
           </div>
           {expanded && (
             <div className="space-y-[6px] mt-[8px]">
@@ -357,14 +353,13 @@ function OrderCard({ order, onRefresh }) {
             <s.icon size={11} />
             {s.label}
           </span>
-          <span className="ml-auto text-[10px] text-[#9ca3af]">{time}</span>
+          <span className="ml-auto text-[10px] text-gray-600 dark:text-[#9ca3af]">{time}</span>
         </div>
       </div>
 
       {/* Tracking timeline */}
       {!isRejected && (
-        <div className="px-[14px] pb-[12px]"
-             style={{ borderTop: "1px solid #1c1e22" }}>
+        <div className="px-[14px] pb-[12px] border-t border-gray-200 dark:border-[#1c1e22]">
           <div className="flex items-center mt-[12px]">
             {TIMELINE_STEPS.map((step, idx) => {
               const stepDone   = currentStep > stepIndex(step.key)

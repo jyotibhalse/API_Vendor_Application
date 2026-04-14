@@ -18,6 +18,7 @@ from app.schemas.admin import (
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 admin_only = require_role("admin")
+BILLABLE_ORDER_STATUSES = {"delivered"}
 
 
 def to_utc(value: datetime | None) -> datetime | None:
@@ -44,6 +45,10 @@ def get_period_start(period: str) -> datetime:
     if period == "month":
         return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def is_billable_order(order: Order) -> bool:
+    return order.status in BILLABLE_ORDER_STATUSES
 
 
 async def get_platform_settings(db: AsyncSession) -> PlatformSetting:
@@ -134,7 +139,7 @@ def build_vendor_metrics(
         ):
             vendor_metrics["last_order_at"] = order_created_at
 
-        if order.status == "rejected":
+        if not is_billable_order(order):
             continue
 
         revenue = float(order.total_amount or 0.0)
@@ -231,10 +236,14 @@ async def get_admin_overview(
             order for order in orders
             if (order_dt := to_utc(order.created_at)) and day_start <= order_dt < day_end
         ]
-        day_revenue = sum(float(order.total_amount or 0.0) for order in day_orders if order.status != "rejected")
+        day_revenue = sum(
+            float(order.total_amount or 0.0)
+            for order in day_orders
+            if is_billable_order(order)
+        )
         day_platform = 0.0
         for order in day_orders:
-            if order.status == "rejected":
+            if not is_billable_order(order):
                 continue
             vendor = next((item for item in vendor_items if item["id"] == order.vendor_id), None)
             if vendor is None:

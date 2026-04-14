@@ -20,7 +20,6 @@ export default function CustomerLayout() {
           homeTo="/customer"
           actions={[
             { icon: LogOut, label: "Logout", onClick: handleLogout },
-            { to: "/customer/orders", icon: ShoppingCart, label: "Orders" },
           ]}
         />
         <div className="min-h-0 flex-1 overflow-hidden">

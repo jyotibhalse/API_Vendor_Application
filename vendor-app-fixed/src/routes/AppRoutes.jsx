@@ -1,23 +1,24 @@
-import { Navigate, Route, Routes } from "react-router-dom"
-import MobileLayout from "../components/layout/MobileLayout"
-import ProtectedRoute from "../components/ProtectedRoute"
-import CustomerLayout from "../customer/layout/CustomerLayout"
-import CustomerInventory from "../customer/pages/CustomerInventory"
-import CustomerOrders from "../customer/pages/CustomerOrders"
-import CustomerProfile from "../customer/pages/CustomerProfile"
-import Alerts from "../pages/Alerts"
-import AdminLogin from "../pages/AdminLogin"
-import AdminPanel from "../pages/AdminPanel"
-import Dashboard from "../pages/Dashboard"
-import ForgotPassword from "../pages/Forgotpassword"
-import Inventory from "../pages/Inventory"
-import KOT from "../pages/KOT"
-import Login from "../pages/Login"
-import Orders from "../pages/Orders"
-import Profile from "../pages/Profile"
-import Registration from "../pages/Registration"
-import ResetPassword from "../pages/Resetpassword"
-import VerifyOTP from "../pages/Verifyotp"
+import { Navigate, Route, Routes } from "react-router-dom";
+import MobileLayout from "../components/layout/MobileLayout";
+import ProtectedRoute from "../components/ProtectedRoute";
+import CustomerLayout from "../customer/layout/CustomerLayout";
+import CustomerInventory from "../customer/pages/CustomerInventory";
+import CustomerOrders from "../customer/pages/CustomerOrders";
+import CustomerProfile from "../customer/pages/CustomerProfile";
+import AdminAlerts from "../pages/AdminAlerts";
+import Alerts from "../pages/Alerts";
+import AdminLogin from "../pages/AdminLogin";
+import AdminPanel from "../pages/AdminPanel";
+import Dashboard from "../pages/Dashboard";
+import ForgotPassword from "../pages/Forgotpassword";
+import Inventory from "../pages/Inventory";
+import KOT from "../pages/KOT";
+import Login from "../pages/Login";
+import Orders from "../pages/Orders";
+import Profile from "../pages/Profile";
+import Registration from "../pages/Registration";
+import ResetPassword from "../pages/Resetpassword";
+import VerifyOTP from "../pages/Verifyotp";
 
 export default function AppRoutes() {
   return (
@@ -34,6 +35,15 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <AdminPanel />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/alerts"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminAlerts />
           </ProtectedRoute>
         }
       />
@@ -69,5 +79,5 @@ export default function AppRoutes() {
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
-  )
+  );
 }

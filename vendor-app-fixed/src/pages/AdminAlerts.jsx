@@ -1,195 +1,207 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle, Clock, BarChart3 } from "lucide-react";
+import { Clock, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import AppTopHeader from "../components/layout/AppTopHeader";
 import { useAuth } from "../context/AuthContext";
 
-const ALERT_TYPES = {
-  pending_vendor: {
+const CARD_STYLES = {
+  pending: {
     icon: Clock,
     color: "#f4a623",
     background: "rgba(244,166,35,0.15)",
     border: "rgba(244,166,35,0.28)",
-    title: "Pending Vendor Approvals",
-  },
-  low_stock: {
-    icon: AlertCircle,
-    color: "#ef4444",
-    background: "rgba(239,68,68,0.15)",
-    border: "rgba(239,68,68,0.28)",
-    title: "Low Stock Alerts",
-  },
-  platform_stats: {
-    icon: BarChart3,
-    color: "#3b82f6",
-    background: "rgba(59,130,246,0.15)",
-    border: "rgba(59,130,246,0.28)",
-    title: "Platform Insights",
   },
 };
 
 export default function AdminAlerts() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await api.get("/admin/vendors?period=month");
-        setVendors(response.data.items || []);
-      } catch (err) {
-        console.error("Error fetching vendors:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  const [error, setError] = useState("");
 
   const handleLogout = () => {
     logout();
     navigate("/admin/login", { replace: true });
   };
 
-  const pendingVendors = vendors.filter((v) => v.approval_status === "pending");
-  const totalAlerts = pendingVendors.length;
+  const loadAlerts = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await api.get("/admin/vendors?period=month");
+      const vendorsList = Array.isArray(response.data.items)
+        ? response.data.items
+        : Array.isArray(response.data)
+          ? response.data
+          : [];
+      const pendingVendors = vendorsList.filter(
+        (v) => v.approval_status === "pending",
+      );
+      setVendors(pendingVendors);
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+          err.message ||
+          "Failed to load vendor alerts",
+      );
+      console.error("Error fetching vendors:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const summaryText =
-    totalAlerts === 0
-      ? "All systems operational"
-      : totalAlerts === 1
-        ? "1 pending approval"
-        : `${totalAlerts} items need attention`;
+  useEffect(() => {
+    loadAlerts();
+  }, []);
+
+  const totalAlerts = vendors.length;
+  const summaryText = loading
+    ? "Scanning pending vendor approvals..."
+    : totalAlerts > 0
+      ? `${totalAlerts} vendor approval${totalAlerts !== 1 ? "s" : ""} require attention`
+      : "No pending vendor approvals";
 
   return (
     <div className="flex h-full min-h-screen flex-col overflow-hidden bg-bg animate-fadeUp">
       <AppTopHeader
         homeTo="/admin"
-        actions={[
-          {
-            icon: AlertCircle,
-            label: "Back to Admin",
-            onClick: () => navigate("/admin"),
-          },
-        ]}
+        actions={[{ icon: LogOut, label: "Logout", onClick: handleLogout }]}
       />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="w-full space-y-4 px-4 pt-4 pb-6 sm:space-y-5 sm:px-5 sm:pt-5 sm:pb-8 lg:mx-auto lg:max-w-4xl">
-          {/* Summary */}
-          <section
-            className="rounded-[24px] p-4 sm:rounded-[26px] sm:p-5"
+        <div className="px-5 pb-5 pt-5">
+          <h1 className="font-syne text-[30px] font-extrabold leading-none text-text">
+            Vendor Alerts
+          </h1>
+          <p className="mt-2 text-[12px] text-text-muted">{summaryText}</p>
+        </div>
+
+        {error && (
+          <div
+            className="mx-5 mb-4 rounded-[16px] px-4 py-3 text-[13px]"
             style={{
-              background: "var(--profile-hero-gradient)",
-              border: "1px solid var(--profile-hero-border)",
-              boxShadow: "var(--profile-hero-shadow)",
+              background: "var(--feedback-error-bg)",
+              border: "1px solid var(--feedback-error-border)",
+              color: "var(--feedback-error-text)",
             }}
           >
-            <div className="flex flex-col gap-4">
-              <div>
-                <h1 className="font-syne text-[24px] font-extrabold leading-tight text-text sm:text-[28px]">
-                  Admin Alerts
-                </h1>
-                <p className="mt-2 text-[13px] leading-relaxed text-text-muted sm:text-[14px]">
-                  {summaryText}
-                </p>
-              </div>
-            </div>
-          </section>
+            {error}
+          </div>
+        )}
 
-          {/* Pending Vendors */}
-          {pendingVendors.length > 0 ? (
-            <section
-              className="rounded-[20px] p-4 sm:rounded-[24px] sm:p-5"
-              style={{
-                background: "var(--dashboard-alert-bg)",
-                border: "1px solid var(--dashboard-alert-border)",
-              }}
-            >
-              <div className="flex items-start gap-3">
-                <AlertCircle
-                  size={18}
-                  style={{ color: "var(--dashboard-alert-icon)" }}
-                  className="mt-1 flex-shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <h2
-                    className="font-semibold text-[14px] sm:text-[15px]"
-                    style={{ color: "var(--dashboard-alert-text)" }}
-                  >
-                    {pendingVendors.length} Pending Vendor Approval
-                    {pendingVendors.length !== 1 ? "s" : ""}
-                  </h2>
-                  <p
-                    className="mt-1 text-[12px] leading-relaxed sm:text-[13px]"
-                    style={{ color: "var(--dashboard-alert-text)" }}
-                  >
-                    Review and approve or reject new vendor registrations to
-                    onboard them to the platform.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                {pendingVendors.map((vendor) => (
-                  <div
-                    key={vendor.id}
-                    className="flex items-start justify-between gap-3 rounded-[14px] border border-border bg-surface p-3 sm:p-4"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-text text-[13px] sm:text-[14px]">
-                        {vendor.full_name}
-                      </div>
-                      <div className="mt-1 text-[12px] text-text-muted">
-                        {vendor.email}
-                      </div>
-                      {vendor.business_name && (
-                        <div className="mt-1 text-[12px] text-text-muted">
-                          {vendor.business_name}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigate("/admin")}
-                      className="flex-shrink-0 rounded-lg bg-accent px-3 py-2 text-[12px] font-medium text-on-accent transition-all hover:shadow-lg"
-                    >
-                      Review
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : (
-            <section
-              className="rounded-[20px] p-4 sm:rounded-[24px] sm:p-5"
-              style={{
-                background: "rgb(var(--color-surface))",
-                border: "1px solid rgb(var(--color-border))",
-              }}
-            >
-              <div className="flex items-start gap-3">
-                <CheckCircle
-                  size={18}
-                  color="#22c55e"
-                  className="mt-1 flex-shrink-0"
-                />
-                <div>
-                  <h2 className="font-semibold text-[14px] text-text sm:text-[15px]">
-                    All Clear
-                  </h2>
-                  <p className="mt-1 text-[12px] leading-relaxed text-text-muted sm:text-[13px]">
-                    No pending vendor approvals. Platform is running smoothly.
-                  </p>
-                </div>
-              </div>
-            </section>
-          )}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center px-5 py-12">
+            <div className="text-[13px] text-text-muted">Loading alerts...</div>
+          </div>
+        ) : (
+          <div className="px-5 pb-5">
+            <AlertSection
+              title="Pending Vendor Approvals"
+              subtitle="Review and approve new vendor registrations."
+              items={vendors}
+              emptyLabel="No pending vendor approvals right now."
+              onRefresh={loadAlerts}
+            />
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function AlertSection({ title, subtitle, items, emptyLabel, onRefresh }) {
+  return (
+    <section className="mb-6 last:mb-0">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="font-syne text-[20px] font-bold text-text">{title}</h2>
+          <p className="mt-1 text-[11px] text-text-muted">{subtitle}</p>
+        </div>
+        {onRefresh && (
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="rounded-lg px-3 py-2 text-[11px] font-medium transition-all"
+            style={{
+              background: "rgba(244,166,35,0.15)",
+              color: "#f4a623",
+              border: "1px solid rgba(244,166,35,0.3)",
+            }}
+            title="Refresh alerts"
+          >
+            ↻ Refresh
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        {items.length === 0 ? (
+          <div
+            className="rounded-[18px] px-4 py-4 text-[12px] text-text-muted"
+            style={{
+              background: "rgb(var(--color-surface))",
+              border: "1px solid rgb(var(--color-border))",
+            }}
+          >
+            {emptyLabel}
+          </div>
+        ) : (
+          items.map((vendor) => (
+            <VendorAlertCard
+              key={vendor.id}
+              vendor={vendor}
+              onApprovalChange={onRefresh}
+            />
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function VendorAlertCard({ vendor, onApprovalChange }) {
+  const navigate = useNavigate();
+  const style = CARD_STYLES.pending;
+  const Icon = style.icon;
+
+  const handleClick = () => {
+    navigate("/admin", { state: { refreshAlerts: true } });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="w-full cursor-pointer rounded-[18px] px-4 py-4 text-left transition-all hover:-translate-y-[1px]"
+      style={{
+        background: "rgb(var(--color-surface))",
+        border: `1px solid ${style.border}`,
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="mt-[1px] flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[12px]"
+          style={{
+            background: style.background,
+            color: style.color,
+          }}
+        >
+          <Icon size={18} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="font-syne text-[16px] font-bold leading-tight text-text">
+            {vendor.full_name}
+          </div>
+          <p className="mt-1 text-[11px] leading-[1.45] text-text-muted">
+            {vendor.business_name || "Business registration pending"}
+          </p>
+          <p className="mt-1 text-[10px] text-text-faint">{vendor.email}</p>
+        </div>
+      </div>
+    </button>
   );
 }

@@ -15,7 +15,7 @@ const CARD_STYLES = {
 };
 
 export default function AdminAlerts() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -149,11 +149,7 @@ function AlertSection({ title, subtitle, items, emptyLabel, onRefresh }) {
           </div>
         ) : (
           items.map((vendor) => (
-            <VendorAlertCard
-              key={vendor.id}
-              vendor={vendor}
-              onApprovalChange={onRefresh}
-            />
+            <VendorAlertCard key={vendor.id} vendor={vendor} />
           ))
         )}
       </div>
@@ -161,13 +157,13 @@ function AlertSection({ title, subtitle, items, emptyLabel, onRefresh }) {
   );
 }
 
-function VendorAlertCard({ vendor, onApprovalChange }) {
+function VendorAlertCard({ vendor }) {
   const navigate = useNavigate();
   const style = CARD_STYLES.pending;
   const Icon = style.icon;
 
   const handleClick = () => {
-    navigate("/admin", { state: { refreshAlerts: true } });
+    navigate(`/admin?vendorId=${vendor.id}`);
   };
 
   return (

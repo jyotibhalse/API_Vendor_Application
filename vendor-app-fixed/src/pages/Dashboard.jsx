@@ -116,20 +116,20 @@ export default function Dashboard() {
     (stats?.healthy_stock ?? 0) + (stats?.low_stock_units ?? 0);
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-bg text-black dark:text-black dark:text-white animate-fadeUp">
+    <div className="flex flex-col h-full bg-white dark:bg-[#0c0d0f] text-black dark:text-white animate-fadeUp">
       {/* ── HERO ─────────────────────────────────────────────────── */}
       <div className="px-5 pt-4 pb-5 flex-shrink-0 bg-white dark:bg-[#0c0d0f] border-b border-gray-200 dark:border-[#252830]">
-        <div className="text-[12px] text-gray-600 dark:text-gray-600 dark:text-[#9ca3af] mb-[2px]">
+        <div className="text-[12px] text-gray-600 dark:text-[#9ca3af] mb-[2px]">
           {getGreeting()}
         </div>
-        <div className="font-syne font-extrabold text-[18px] text-black dark:text-black dark:text-white">
+        <div className="font-syne font-extrabold text-[18px] text-black dark:text-white">
           {vendor?.shop_name || "Auto Parts Store"}
         </div>
         <div className="text-[11px] text-accent mt-[2px] flex items-center gap-[5px]">
           <span className="w-[6px] h-[6px] rounded-full bg-green-500 animate-blink inline-block" />
           {vendor?.full_name || "Store Owner"} · Live
         </div>
-        <div className="text-[11px] text-gray-500 dark:text-gray-600 dark:text-[#9ca3af] mt-[6px]">
+        <div className="text-[11px] text-gray-500 dark:text-[#9ca3af] mt-[6px]">
           {today}
         </div>
       </div>
@@ -250,7 +250,12 @@ export default function Dashboard() {
                 />
                 <Tooltip
                   cursor={{ fill: "rgba(244,166,35,0.06)" }}
-                  contentStyle={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 10, fontSize: 11 }}
+                  contentStyle={{
+                    background: "#ffffff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 10,
+                    fontSize: 11,
+                  }}
                   labelStyle={{ color: "#111827" }}
                   formatter={(v, _, props) => [
                     `₹${v.toLocaleString("en-IN")}  ·  ${props.payload.orders} order${props.payload.orders !== 1 ? "s" : ""}`,
@@ -280,7 +285,9 @@ export default function Dashboard() {
             Stock Distribution
           </div>
           {loadingStats ? (
-            <div className="text-[12px] text-gray-600 dark:text-[#9ca3af]">Loading…</div>
+            <div className="text-[12px] text-gray-600 dark:text-[#9ca3af]">
+              Loading…
+            </div>
           ) : (
             <>
               <StockBar
@@ -333,11 +340,7 @@ export default function Dashboard() {
           />
           <SummaryRow
             label="Rejected"
-            value={
-              (stats?.order_count ?? 0) -
-              (stats?.pending_count ?? 0) -
-              (stats?.completed_count ?? 0)
-            }
+            value={stats?.rejected_count ?? 0}
             color="#ef4444"
           />
         </div>
@@ -389,7 +392,7 @@ function StatTile({ label, value, meta, color, icon }) {
     red: "#ef4444",
   }[color];
   return (
-    <div className="flex-shrink-0 min-w-[130px] bg-white dark:bg-surface rounded-2xl p-[14px] relative overflow-hidden border border-gray-200 dark:border-[#252830]">
+    <div className="flex-shrink-0 min-w-[130px] bg-white dark:bg-[#141618] rounded-2xl p-[14px] relative overflow-hidden border border-gray-200 dark:border-[#252830]">
       <div
         className="absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl"
         style={{ background: c }}
@@ -400,13 +403,15 @@ function StatTile({ label, value, meta, color, icon }) {
       >
         {icon}
       </div>
-      <div className="text-[10px] text-gray-600 dark:text-gray-600 dark:text-[#9ca3af] uppercase tracking-[0.5px] mb-2">
+      <div className="text-[10px] text-gray-600 dark:text-[#9ca3af] uppercase tracking-[0.5px] mb-2">
         {label}
       </div>
-      <div className="font-syne font-extrabold text-[20px] leading-none text-black dark:text-black dark:text-white">
+      <div className="font-syne font-extrabold text-[20px] leading-none text-black dark:text-white">
         {value}
       </div>
-      <div className="text-[10px] text-gray-600 dark:text-gray-600 dark:text-[#9ca3af] mt-[5px]">{meta}</div>
+      <div className="text-[10px] text-gray-600 dark:text-[#9ca3af] mt-[5px]">
+        {meta}
+      </div>
     </div>
   );
 }
@@ -434,7 +439,9 @@ function StockBar({ label, value, total, color, unit }) {
 function SummaryRow({ label, value, color }) {
   return (
     <div className="flex justify-between items-center py-[8px] border-b border-gray-200 dark:border-[#252830] last:border-0">
-      <span className="text-[12px] text-gray-600 dark:text-[#9ca3af]">{label}</span>
+      <span className="text-[12px] text-gray-600 dark:text-[#9ca3af]">
+        {label}
+      </span>
       <span className="font-syne font-bold text-[13px]" style={{ color }}>
         {Math.max(value, 0)}
       </span>

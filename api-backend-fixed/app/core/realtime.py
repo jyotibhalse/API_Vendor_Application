@@ -122,10 +122,20 @@ class OrderRealtimeHub:
         await self._broadcast_local(recipient_id, message)
 
     async def publish_many(self, recipient_ids: Iterable[int], event_type: str, order: dict) -> None:
-        unique_recipient_ids = {recipient_id for recipient_id in recipient_ids if recipient_id}
-        await asyncio.gather(
-            *(self.publish(recipient_id, event_type, order) for recipient_id in unique_recipient_ids)
+        unique_recipient_ids = [recipient_id for recipient_id in recipient_ids if recipient_id]
+        results = await asyncio.gather(
+            *(self.publish(recipient_id, event_type, order) for recipient_id in unique_recipient_ids),
+            return_exceptions=True
         )
+
+        for recipient_id, result in zip(unique_recipient_ids, results):
+            if isinstance(result, Exception):
+                logger.error(
+                    "Failed to publish event %s to recipient %s: %s",
+                    event_type,
+                    recipient_id,
+                    str(result),
+                )
 
     async def _listen_for_messages(self) -> None:
         try:

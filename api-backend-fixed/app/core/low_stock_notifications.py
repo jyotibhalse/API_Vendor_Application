@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import smtplib
+import socket
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -17,6 +18,7 @@ from app.core.config import (
     LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES,
     LOW_STOCK_NOTIFICATION_REPEAT_HOURS,
     LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS,
+    SMTP_TIMEOUT,
 )
 from app.core.database import AsyncSessionLocal
 from app.models.brand import Brand
@@ -133,10 +135,19 @@ def _send_html_email(to_email: str, subject: str, body: str) -> None:
     msg["To"] = to_email
     msg.attach(MIMEText(body, "html"))
 
-    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASSWORD)
-        server.sendmail(EMAIL_USER, to_email, msg.as_string())
+    try:
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=SMTP_TIMEOUT) as server:
+            server.starttls()
+            server.login(EMAIL_USER, EMAIL_PASSWORD)
+            server.sendmail(EMAIL_USER, to_email, msg.as_string())
+    except (smtplib.SMTPException, socket.timeout, socket.error) as e:
+        logger.error(
+            "SMTP connection/send failed for %s (timeout=%ds): %s",
+            to_email,
+            SMTP_TIMEOUT,
+            str(e),
+        )
+        raise
 
 
 class LowStockNotificationScheduler:
@@ -175,12 +186,15 @@ class LowStockNotificationScheduler:
                 await asyncio.sleep(LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS)
 
             while True:
-                await self.run_once()
-                await asyncio.sleep(max(LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES, 1) * 60)
+                try:
+                    await self.run_once()
+                    await asyncio.sleep(max(LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES, 1) * 60)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    logger.exception("Low-stock notification iteration failed, continuing scheduler")
         except asyncio.CancelledError:
             raise
-        except Exception:
-            logger.exception("Low-stock notification scheduler stopped unexpectedly")
 
     async def run_once(self) -> None:
         async with AsyncSessionLocal() as db:
@@ -249,8 +263,8 @@ class LowStockNotificationScheduler:
             return
 
         subject, body = _build_low_stock_email(vendor, items, threshold)
-        await asyncio.to_thread(_send_html_email, vendor.email, subject, body)
 
+        # Persist notification log first to prevent duplicate sends if email fails
         db.add(
             NotificationLog(
                 vendor_id=vendor.id,
@@ -259,17 +273,30 @@ class LowStockNotificationScheduler:
             )
         )
         await db.commit()
-        logger.info(
-            "Sent low-stock notification to vendor %s for %s items",
-            vendor.id,
-            len(items),
-        )
+
+        # Send email in try/except so failures don't rollback the commit
+        try:
+            await asyncio.to_thread(_send_html_email, vendor.email, subject, body)
+            logger.info(
+                "Sent low-stock notification to vendor %s for %s items",
+                vendor.id,
+                len(items),
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to send low-stock notification email to vendor %s: %s",
+                vendor.id,
+                str(e),
+            )
 
     async def _get_low_stock_items(self, db, vendor_id: int, threshold: int) -> list[dict]:
+        # Note: Uses leftouterjoin on Brand to handle edge cases, but naturally filters
+        # to products with a valid brand since Brand.vendor_id == vendor_id requires Brand to exist.
+        # Data model assumption: All products must have a brand to be tracked for notifications.
         result = await db.execute(
             select(Variant, Product, Brand)
             .join(Product, Variant.product_id == Product.id)
-            .join(Brand, Product.brand_id == Brand.id)
+            .outerjoin(Brand, Product.brand_id == Brand.id)
             .where(
                 Brand.vendor_id == vendor_id,
                 Variant.stock <= threshold,

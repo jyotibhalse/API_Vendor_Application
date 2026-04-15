@@ -4,14 +4,9 @@ import { useNavigate } from "react-router-dom"
 import api from "../../api/axios"
 import { useOrderRealtime } from "../../hooks/useOrderRealtime"
 
-const BASE_URL = "http://localhost:8000"
 
 function getImageUrl(path) {
-  if (!path) {
-    return null
-  }
-
-  return path.startsWith("http") ? path : `${BASE_URL}${path}`
+  return path || null
 }
 
 function formatAmount(value) {

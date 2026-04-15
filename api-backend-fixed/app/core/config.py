@@ -62,3 +62,15 @@ LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES = _get_int_env("LOW_STOCK_NOTIFICATION_I
 LOW_STOCK_NOTIFICATION_REPEAT_HOURS = _get_int_env("LOW_STOCK_NOTIFICATION_REPEAT_HOURS", 24)
 LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS = _get_int_env("LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS", 15)
 SMTP_TIMEOUT = _get_int_env("SMTP_TIMEOUT", 10)
+# AWS S3 Configuration
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
+AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
+AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME", "")
+AWS_S3_BASE_URL = f"https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com" if AWS_BUCKET_NAME else ""
+# Upload Settings
+MAX_UPLOAD_SIZE_MB = _get_int_env("MAX_UPLOAD_SIZE_MB", 10)
+ALLOWED_FILE_TYPES = os.getenv("ALLOWED_FILE_TYPES", "jpg,jpeg,png,pdf").split(",")
+# Environment Control
+ENV = os.getenv("ENV", "development")
+USE_S3 = os.getenv("USE_S3", "true").lower() == "true"

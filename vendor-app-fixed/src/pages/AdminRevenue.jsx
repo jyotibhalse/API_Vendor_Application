@@ -42,7 +42,7 @@ export default function AdminRevenue() {
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
         metaLabel="Default commission"
-        metaValue={`${formatPercent(settingsForm.default_commission_rate)} + ${formatCurrency(settingsForm.platform_fee_flat)} flat`}
+        metaValue={`${formatPercent(settingsForm?.default_commission_rate)} + ${formatCurrency(settingsForm?.platform_fee_flat)} flat`}
       >
         <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
           <HeroMeta
@@ -98,7 +98,8 @@ export default function AdminRevenue() {
             </div>
           </div>
           <div className="text-[12px] text-text-muted">
-            {vendors.length} vendor{vendors.length === 1 ? "" : "s"} shown
+            {vendors?.length || 0} vendor
+            {(vendors?.length || 0) === 1 ? "" : "s"} shown
           </div>
         </div>
 
@@ -274,11 +275,11 @@ export default function AdminRevenue() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <MetricPill
               label="Default Commission"
-              value={formatPercent(settingsForm.default_commission_rate)}
+              value={formatPercent(settingsForm?.default_commission_rate)}
             />
             <MetricPill
               label="Flat Fee"
-              value={formatCurrency(settingsForm.platform_fee_flat)}
+              value={formatCurrency(settingsForm?.platform_fee_flat)}
             />
           </div>
         </SectionCard>

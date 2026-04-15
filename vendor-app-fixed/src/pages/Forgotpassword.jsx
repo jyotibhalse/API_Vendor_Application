@@ -65,10 +65,14 @@ export default function ForgotPassword() {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[5px]">
+            <label
+              htmlFor="email"
+              className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[5px]"
+            >
               Email Address
             </label>
             <input
+              id="email"
               type="email"
               placeholder="vendor@example.com"
               value={email}
@@ -82,7 +86,6 @@ export default function ForgotPassword() {
               }
             />
           </div>
-
           <button
             type="submit"
             disabled={loading}

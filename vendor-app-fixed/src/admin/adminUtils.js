@@ -12,15 +12,21 @@ export const INITIAL_SETTINGS = {
 };
 
 export function formatCurrency(value) {
+  const numValue = parseFloat(value);
+  const safeValue = Number.isFinite(numValue) ? numValue : 0;
+
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(Number(value || 0));
+  }).format(safeValue);
 }
 
 export function formatPercent(value) {
-  return `${Number(value || 0).toFixed(1)}%`;
+  const numValue = Number(value || 0);
+  const safeValue = Number.isFinite(numValue) ? numValue : 0;
+  return `${safeValue.toFixed(1)}%`;
 }
 
 export function formatDate(value) {
@@ -28,7 +34,12 @@ export function formatDate(value) {
     return "No activity yet";
   }
 
-  return new Date(value).toLocaleString("en-IN", {
+  const date = new Date(value);
+  if (isNaN(date.getTime())) {
+    return "No activity yet";
+  }
+
+  return date.toLocaleString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",

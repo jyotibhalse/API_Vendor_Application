@@ -291,9 +291,8 @@ async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Dep
     except Exception as e:
         # Remove OTP if email failed
         otp_store.pop(email, None)
-        logger.exception(f"Failed to send OTP email to {email}")
+        logger.exception("Failed to send OTP email to user")
         raise HTTPException(status_code=500, detail="Failed to send email")
-
     return {"message": "OTP sent to your email"}
 
 

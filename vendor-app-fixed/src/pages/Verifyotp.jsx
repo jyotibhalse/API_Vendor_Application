@@ -118,6 +118,7 @@ export default function VerifyOTP() {
 
         {error && (
           <div
+            role="alert"
             className="mb-4 px-4 py-3 rounded-2xl text-[13px] text-red-400"
             style={{
               background: "rgba(239,68,68,0.08)",
@@ -127,7 +128,6 @@ export default function VerifyOTP() {
             {error}
           </div>
         )}
-
         {/* OTP Boxes */}
         <div className="flex gap-2 mb-8 justify-center" onPaste={handlePaste}>
           {otp.map((digit, i) => (
@@ -140,6 +140,7 @@ export default function VerifyOTP() {
               value={digit}
               onChange={(e) => handleChange(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
+              aria-label={`OTP digit ${i + 1} of 6`}
               className="w-12 h-14 text-center text-text font-syne font-extrabold text-[22px] rounded-[12px] outline-none transition-all"
               style={{
                 background: "rgb(var(--color-surface))",
@@ -150,7 +151,6 @@ export default function VerifyOTP() {
             />
           ))}
         </div>
-
         <button
           onClick={handleVerify}
           disabled={loading || otp.join("").length < 6}

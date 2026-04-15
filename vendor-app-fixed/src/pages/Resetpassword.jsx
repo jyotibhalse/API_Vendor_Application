@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../api/axios";
 import PasswordField from "../components/ui/PasswordField";
 
 export default function ResetPassword() {
+  const timerRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const email = location.state?.email || "";
@@ -15,12 +16,20 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
     if (password !== confirm) {
@@ -36,7 +45,7 @@ export default function ResetPassword() {
         new_password: password,
       });
       setSuccess(true);
-      setTimeout(() => navigate("/login"), 2000);
+      timerRef.current = setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
       setError(err.response?.data?.detail || "Reset failed. Start over.");
     } finally {

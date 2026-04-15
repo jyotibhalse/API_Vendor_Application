@@ -83,7 +83,11 @@ export default function AdminPanel() {
           <HeroMeta
             icon={TrendingUp}
             label="Default Commission"
-            value={formatPercent(settingsForm.default_commission_rate)}
+            value={
+              loading
+                ? "Loading..."
+                : formatPercent(settingsForm.default_commission_rate)
+            }
           />
         </div>
 
@@ -100,10 +104,16 @@ export default function AdminPanel() {
           <div className="mt-2 flex items-end justify-between gap-3">
             <div>
               <div className="font-syne text-[22px] font-extrabold text-text">
-                {formatPercent(settingsForm.default_commission_rate)}
+                {loading
+                  ? "Loading..."
+                  : formatPercent(settingsForm.default_commission_rate)}
               </div>
               <div className="mt-1 text-[11px] text-text-muted">
-                + {formatCurrency(settingsForm.platform_fee_flat)} flat fee
+                +{" "}
+                {loading
+                  ? "..."
+                  : formatCurrency(settingsForm.platform_fee_flat)}{" "}
+                flat fee
               </div>
             </div>
             <Settings2 size={18} className="text-accent" />

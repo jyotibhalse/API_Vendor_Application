@@ -213,7 +213,7 @@ export default function AdminApprovals() {
                   <button
                     type="button"
                     onClick={() => handleApproval(vendorItem.id, "approved")}
-                    disabled={busyKey.startsWith(`approval-${vendorItem.id}`)}
+                    disabled={busyKey?.startsWith(`approval-${vendorItem.id}`)}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-accent px-4 py-3 text-[13px] font-semibold text-on-accent transition-opacity sm:w-auto"
                     style={{
                       opacity: busyKey.startsWith(`approval-${vendorItem.id}`)
@@ -267,7 +267,13 @@ export default function AdminApprovals() {
 
         <div className="mt-4 space-y-3">
           {loading ? (
-            <div className="rounded-[16px] bg-surface2 px-4 py-4 text-[12px] text-text-muted sm:rounded-[18px]">
+            <div
+              className="rounded-[16px] px-4 py-4 text-[12px] text-text-muted sm:rounded-[18px]"
+              style={{
+                background: "rgb(var(--color-surface-2))",
+                border: "1px dashed rgb(var(--color-border))",
+              }}
+            >
               Loading reviewed vendors...
             </div>
           ) : reviewedVendors.length === 0 ? (

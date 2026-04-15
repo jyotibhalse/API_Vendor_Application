@@ -20,19 +20,32 @@ from app.core.config import (
 # S3 Client Initialization
 # ─────────────────────────────────────────────────────────────────────────────
 
-s3_client = boto3.client(
-    "s3",
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    region_name=AWS_REGION,
-)
+_s3_client = None
 
+
+def _get_s3_client():
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            region_name=AWS_REGION,
+        )
+    return _s3_client
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _validate_file(file: UploadFile):
+    # ✅ Ensure filename exists
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Filename is required",
+        )
+
     # ✅ Validate file type
     ext = file.filename.split(".")[-1].lower()
     if ext not in ALLOWED_FILE_TYPES:
@@ -67,6 +80,9 @@ def upload_file_to_s3(file: UploadFile, folder: str = "uploads") -> str:
     Upload file to S3 and return public URL
     """
 
+    # ✅ ALWAYS validate first (important security fix)
+    _validate_file(file)
+
     # 🔁 Fallback to local (if disabled)
     if not USE_S3:
         return _save_locally(file)
@@ -74,23 +90,19 @@ def upload_file_to_s3(file: UploadFile, folder: str = "uploads") -> str:
     if not AWS_BUCKET_NAME:
         raise HTTPException(status_code=500, detail="S3 bucket not configured")
 
-    # ✅ Validate file
-    _validate_file(file)
-
     # ✅ Generate unique filename
     key = _generate_filename(file.filename, folder)
 
     try:
         # Upload
-        s3_client.upload_fileobj(
+        _get_s3_client().upload_fileobj(
             file.file,
             AWS_BUCKET_NAME,
             key,
             ExtraArgs={
-                "ContentType": file.content_type,
+                "ContentType": file.content_type or "application/octet-stream",
             },
         )
-
         # Construct URL
         file_url = f"{AWS_S3_BASE_URL}/{key}"
 
@@ -129,12 +141,17 @@ def _save_locally(file: UploadFile) -> str:
 # Optional: Pre-signed URL (NEXT LEVEL)
 # ─────────────────────────────────────────────────────────────────────────────
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def generate_presigned_url(key: str, expires_in: int = 3600) -> Optional[str]:
     """
     Generate a temporary secure URL to access private files
     """
     try:
-        return s3_client.generate_presigned_url(
+        return _get_s3_client().generate_presigned_url(
             "get_object",
             Params={
                 "Bucket": AWS_BUCKET_NAME,
@@ -142,5 +159,6 @@ def generate_presigned_url(key: str, expires_in: int = 3600) -> Optional[str]:
             },
             ExpiresIn=expires_in,
         )
-    except Exception:
+    except (BotoCoreError, NoCredentialsError) as e:
+        logger.warning(f"Failed to generate presigned URL for {key}: {e}")
         return None

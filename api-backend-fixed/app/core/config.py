@@ -70,7 +70,6 @@ AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME", "")
 AWS_S3_BASE_URL = f"https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com" if AWS_BUCKET_NAME else ""
 # Upload Settings
 MAX_UPLOAD_SIZE_MB = _get_int_env("MAX_UPLOAD_SIZE_MB", 10)
-ALLOWED_FILE_TYPES = os.getenv("ALLOWED_FILE_TYPES", "jpg,jpeg,png,pdf").split(",")
-# Environment Control
+ALLOWED_FILE_TYPES = [ft.strip() for ft in os.getenv("ALLOWED_FILE_TYPES", "jpg,jpeg,png,pdf").split(",")]# Environment Control
 ENV = os.getenv("ENV", "development")
-USE_S3 = os.getenv("USE_S3", "true").lower() == "true"
+USE_S3 = os.getenv("USE_S3", "false").lower() == "true"

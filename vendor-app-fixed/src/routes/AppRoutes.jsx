@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import AdminLayout from "../components/layout/AdminLayout";
 import MobileLayout from "../components/layout/MobileLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import CustomerLayout from "../customer/layout/CustomerLayout";
@@ -6,9 +7,11 @@ import CustomerInventory from "../customer/pages/CustomerInventory";
 import CustomerOrders from "../customer/pages/CustomerOrders";
 import CustomerProfile from "../customer/pages/CustomerProfile";
 import AdminAlerts from "../pages/AdminAlerts";
+import AdminApprovals from "../pages/AdminApprovals";
 import Alerts from "../pages/Alerts";
 import AdminLogin from "../pages/AdminLogin";
 import AdminPanel from "../pages/AdminPanel";
+import AdminRevenue from "../pages/AdminRevenue";
 import Dashboard from "../pages/Dashboard";
 import ForgotPassword from "../pages/Forgotpassword";
 import Inventory from "../pages/Inventory";
@@ -34,19 +37,15 @@ export default function AppRoutes() {
         path="/admin"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
-            <AdminPanel />
+            <AdminLayout />
           </ProtectedRoute>
         }
-      />
-
-      <Route
-        path="/admin/alerts"
-        element={
-          <ProtectedRoute allowedRoles={["admin"]}>
-            <AdminAlerts />
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route index element={<AdminPanel />} />
+        <Route path="approvals" element={<AdminApprovals />} />
+        <Route path="revenue" element={<AdminRevenue />} />
+        <Route path="alerts" element={<AdminAlerts />} />
+      </Route>
 
       <Route
         path="/customer"

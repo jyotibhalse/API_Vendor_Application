@@ -51,6 +51,22 @@ class ChangePasswordRequest(BaseModel):
             raise ValueError("New password must be different from the current password")
         return self
 
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class VerifyOTPRequest(BaseModel):
+    email: str
+    otp: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    otp: str
+    new_password: str = Field(min_length=6)
+
+
 class UserResponse(BaseModel):
     id: int
     email: str

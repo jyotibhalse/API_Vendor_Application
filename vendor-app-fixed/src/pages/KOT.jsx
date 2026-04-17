@@ -45,7 +45,7 @@ export default function KOT() {
   const fetchPendingOrders = useEffectEvent(async ({ allowAlert = false } = {}) => {
     try {
       const response = await api.get("/orders/?status=pending")
-      syncOrders(response.data, { allowAlert })
+      syncOrders(response.data?.orders || [], { allowAlert })
     } catch (error) {
       console.log(error.response?.data)
       setLoading(false)

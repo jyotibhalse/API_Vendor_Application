@@ -118,7 +118,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col h-full bg-white dark:bg-[#0c0d0f] text-black dark:text-white animate-fadeUp">
       {/* ── HERO ─────────────────────────────────────────────────── */}
-      <div className="px-5 pt-4 pb-5 flex-shrink-0 bg-white dark:bg-[#0c0d0f] border-b border-gray-200 dark:border-[#252830]">
+      <div className="px-4 py-4 flex-shrink-0 bg-white dark:bg-[#0c0d0f] border-b border-gray-200 dark:border-[#252830]">
         <div className="text-[12px] text-gray-600 dark:text-[#9ca3af] mb-[2px]">
           {getGreeting()}
         </div>
@@ -135,7 +135,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── FILTER CHIPS ─────────────────────────────────────────── */}
-      <div className="flex gap-[6px] px-5 py-3 overflow-x-auto flex-shrink-0">
+      <div className="flex gap-2 px-4 py-3 overflow-x-auto flex-shrink-0">
         {FILTERS.map((f) => (
           <button
             key={f}
@@ -189,7 +189,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── SCROLLABLE CONTENT ───────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {/* Low stock alert banner */}
         {(stats?.low_stock ?? 0) > 0 && (
           <button
@@ -210,7 +210,7 @@ export default function Dashboard() {
         )}
 
         {/* Revenue bar chart */}
-        <div className="card bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830]">
+        <div className="card bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830] rounded-2xl p-4">
           <div className="font-syne font-bold text-[14px] text-black dark:text-white mb-[2px]">
             Revenue — Last 7 Days
           </div>
@@ -280,7 +280,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stock Distribution */}
-        <div className="card bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830]">
+        <div className="card bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830] rounded-2xl p-4">
           <div className="font-syne font-bold text-[14px] text-black dark:text-white mb-3">
             Stock Distribution
           </div>
@@ -316,7 +316,7 @@ export default function Dashboard() {
         </div>
 
         {/* Order Summary */}
-        <div className="card bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830]">
+        <div className="card bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830] rounded-2xl p-4">
           <div className="font-syne font-bold text-[14px] text-black dark:text-white mb-3">
             Order Summary
             <span className="ml-2 text-[11px] font-normal text-gray-600 dark:text-[#9ca3af]">
@@ -346,7 +346,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Orders */}
-        <div className="card bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830]">
+        <div className="card bg-white dark:bg-[#141618] border border-gray-200 dark:border-[#252830] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="font-syne font-bold text-[14px] text-black dark:text-white">
               Recent Orders

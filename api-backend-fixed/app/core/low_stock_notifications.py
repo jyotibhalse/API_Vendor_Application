@@ -154,6 +154,7 @@ class LowStockNotificationScheduler:
     def __init__(self) -> None:
         self._task: asyncio.Task | None = None
         self._warned_email_config = False
+        self._disabled_due_to_auth_failure = False
 
     async def startup(self) -> None:
         if LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES <= 0:
@@ -224,6 +225,9 @@ class LowStockNotificationScheduler:
         if not items:
             return
 
+        if self._disabled_due_to_auth_failure:
+            return
+
         if not EMAIL_USER or not EMAIL_PASSWORD:
             if not self._warned_email_config:
                 logger.warning(
@@ -263,8 +267,22 @@ class LowStockNotificationScheduler:
             return
 
         subject, body = _build_low_stock_email(vendor, items, threshold)
-
-        # Persist notification log first to prevent duplicate sends if email fails
+        try:
+            await asyncio.to_thread(_send_html_email, vendor.email, subject, body)
+        except smtplib.SMTPAuthenticationError:
+            self._disabled_due_to_auth_failure = True
+            logger.warning(
+                "Disabling low-stock email notifications because SMTP authentication failed. "
+                "Update EMAIL_USER/EMAIL_PASSWORD and restart the backend to re-enable email delivery."
+            )
+            return
+        except smtplib.SMTPException as exc:
+            logger.warning(
+                "Skipping low-stock email notification for vendor %s because the SMTP request failed: %s",
+                vendor.id,
+                exc,
+            )
+            return
         db.add(
             NotificationLog(
                 vendor_id=vendor.id,
@@ -273,21 +291,11 @@ class LowStockNotificationScheduler:
             )
         )
         await db.commit()
-
-        # Send email in try/except so failures don't rollback the commit
-        try:
-            await asyncio.to_thread(_send_html_email, vendor.email, subject, body)
-            logger.info(
-                "Sent low-stock notification to vendor %s for %s items",
-                vendor.id,
-                len(items),
-            )
-        except Exception as e:
-            logger.error(
-                "Failed to send low-stock notification email to vendor %s: %s",
-                vendor.id,
-                str(e),
-            )
+        logger.info(
+            "Sent low-stock notification to vendor %s for %s items",
+            vendor.id,
+            len(items),
+        )
 
     async def _get_low_stock_items(self, db, vendor_id: int, threshold: int) -> list[dict]:
         # Note: Uses leftouterjoin on Brand to handle edge cases, but naturally filters

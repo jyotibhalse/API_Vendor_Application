@@ -28,6 +28,8 @@ lerna-debug.log*
 # App-specific runtime files
 api-backend-fixed/uploads/
 api-backend-fixed/uvicorn*.log
+api-backend-fixed/backend-*.log
+dev-server-pids.json
 
 # OS / editor files
 .DS_Store

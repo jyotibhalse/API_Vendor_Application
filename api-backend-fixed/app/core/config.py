@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR / ".env")
 
-
 def _get_int_env(name: str, default: int) -> int:
     raw_value = os.getenv(name)
     if raw_value is None or raw_value == "":

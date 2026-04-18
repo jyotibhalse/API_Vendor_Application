@@ -1,0 +1,71 @@
+name: api-vendor-application
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: api_vendor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d api_vendor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    image: api-vendor-backend:ci
+    build:
+      context: ./api-backend-fixed
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/api_vendor
+      SECRET_KEY: ci-secret-key
+      DEFAULT_ADMIN_EMAIL: admin@autoparts.local
+      DEFAULT_ADMIN_PASSWORD: Admin@123
+      LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES: 0
+      LOW_STOCK_NOTIFICATION_REPEAT_HOURS: 24
+      LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS: 0
+      REDIS_URL: ""
+      EMAIL_USER: ""
+      EMAIL_PASSWORD: ""
+      EMAIL_FROM: API Vendor <noreply@example.com>
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "8000:8000"
+
+  frontend:
+    image: api-vendor-frontend:ci
+    build:
+      context: ./vendor-app-fixed
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres-data:

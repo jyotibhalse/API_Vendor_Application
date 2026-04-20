@@ -5,15 +5,15 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-api_vendor}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-api_vendor}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,28 +28,33 @@ services:
     image: api-vendor-backend:latest
     restart: unless-stopped
     environment:
-      ENV: ${ENV}
-      SECRET_KEY: ${SECRET_KEY}
-      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL}
-      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
-      REDIS_URL: ${REDIS_URL}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      EMAIL_FROM: ${EMAIL_FROM}
-      LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES: ${LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES}
-      LOW_STOCK_NOTIFICATION_REPEAT_HOURS: ${LOW_STOCK_NOTIFICATION_REPEAT_HOURS}
-      LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS: ${LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ENV: ${ENV:-development}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@autoparts.local}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-Admin@123}
+      REDIS_URL: ${REDIS_URL:-}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-API Vendor <noreply@example.com>}
+      LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES: ${LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES:-60}
+      LOW_STOCK_NOTIFICATION_REPEAT_HOURS: ${LOW_STOCK_NOTIFICATION_REPEAT_HOURS:-24}
+      LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS: ${LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS:-15}
+      POSTGRES_DB: ${POSTGRES_DB:-api_vendor}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-api_vendor}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-}
+      USE_S3: ${USE_S3:-false}
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "${BACKEND_PORT}:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     healthcheck:
       test:
         [
@@ -70,14 +75,14 @@ services:
       context: ./vendor-app-fixed
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${PUBLIC_API_URL}
+        VITE_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
     image: api-vendor-frontend:latest
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - "${FRONTEND_PORT}:80"
+      - "${FRONTEND_PORT:-3000}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ > /dev/null 2>&1 || exit 1"]
       interval: 15s

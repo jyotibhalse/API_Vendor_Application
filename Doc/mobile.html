@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Vendor – Mobile UI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* ── PAGE WRAPPER ─────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: #0a0a0f;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  padding: 40px 20px;
+}
+
+/* ── PHONE SHELL ──────────────────────────────────── */
+.phone-shell {
+  width: 390px;
+  height: 844px;
+  background: #0c0d0f;
+  border-radius: 48px;
+  border: 10px solid #1a1a2e;
+  box-shadow:
+    0 0 0 1px #2a2d40,
+    0 40px 80px rgba(0,0,0,0.9),
+    inset 0 0 40px rgba(0,0,0,0.3);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dynamic island */
+.dynamic-island {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 34px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.di-dot { width: 10px; height: 10px; border-radius: 50%; background: #111; border: 1px solid #222; }
+.di-dot.cam { width: 12px; height: 12px; background: #0a0a15; border: 1px solid #1a2a4a; }
+
+/* Status bar */
+.status-bar {
+  height: 54px;
+  padding: 14px 28px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+.status-time { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #f0f0f0; }
+.status-icons { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #f0f0f0; }
+.battery { width: 22px; height: 11px; border: 1.5px solid #f0f0f0; border-radius: 3px; position: relative; padding: 1.5px; }
+.battery::after { content:''; position:absolute; right:-4px; top:50%; transform:translateY(-50%); width:3px; height:5px; background:#f0f0f0; border-radius:0 1px 1px 0; }
+.battery-fill { width: 75%; height: 100%; background: #22c55e; border-radius: 1px; }
+
+/* Screen (scrollable per-page) */
+.screen {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Pages */
+.page {
+  display: none;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.page::-webkit-scrollbar { display: none; }
+.page.active { display: flex; flex-direction: column; }
+
+/* ── BOTTOM TAB BAR ───────────────────────────────── */
+.tab-bar {
+  height: 82px;
+  background: #141618;
+  border-top: 1px solid #1e2024;
+  display: flex;
+  align-items: stretch;
+  padding: 0 4px;
+  padding-bottom: 16px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: all 0.15s;
+  position: relative;
+  padding-top: 8px;
+}
+.tab-item:hover { background: rgba(244,166,35,0.06); }
+.tab-icon { font-size: 22px; transition: transform 0.2s; }
+.tab-item.active .tab-icon { transform: scale(1.1); }
+.tab-label { font-size: 10px; color: #6b7280; font-weight: 500; letter-spacing: 0.2px; }
+.tab-item.active .tab-label { color: #f4a623; }
+.tab-dot {
+  position: absolute;
+  top: 5px;
+  right: calc(50% - 14px);
+  width: 7px;
+  height: 7px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 1.5px solid #141618;
+}
+
+/* ── VARIABLES ────────────────────────────────────── */
+:root {
+  --bg: #0c0d0f;
+  --surface: #141618;
+  --surface2: #1c1e22;
+  --surface3: #242729;
+  --border: #252830;
+  --accent: #f4a623;
+  --green: #22c55e;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --purple: #a855f7;
+  --text: #f0f0f0;
+  --text2: #9ca3af;
+  --text3: #6b7280;
+}
+
+/* ── SHARED COMPONENTS ────────────────────────────── */
+.page-header {
+  padding: 16px 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.page-header-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: var(--text); }
+.page-header-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+.page-scroll { flex: 1; overflow-y: auto; padding: 0 20px 20px; scrollbar-width: none; }
+.page-scroll::-webkit-scrollbar { display: none; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--text); }
+
+.pill { padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.pill-green { background: rgba(34,197,94,0.15); color: var(--green); }
+.pill-red { background: rgba(239,68,68,0.15); color: var(--red); }
+.pill-orange { background: rgba(244,166,35,0.15); color: var(--accent); }
+.pill-blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+
+.section-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 10px; margin-top: 4px; }
+
+/* ══════════════════════════════════════════════════ */
+/* PAGE: DASHBOARD */
+/* ══════════════════════════════════════════════════ */
+#page-dashboard { background: var(--bg); }
+
+.dash-hero {
+  background: linear-gradient(135deg, #1a1200 0%, #0c0d0f 60%);
+  padding: 16px 20px 20px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.dash-greeting { font-size: 12px; color: var(--text3); margin-bottom: 2px; }
+.dash-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--text); }
+.dash-type { font-size: 11px; color: var(--accent); margin-top: 2px; display: flex; align-items: center; gap: 5px; }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: blink 1.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0.3} }
+.dash-date { font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+.filter-row {
+  display: flex;
+  gap: 6px;
+  padding: 12px 20px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.filter-row::-webkit-scrollbar { display: none; }
+.filter-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text3);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.filter-chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+/* Stats scroll */
+.stats-scroll {
+  display: flex;
+  gap: 10px;
+  padding: 12px 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.stats-scroll::-webkit-scrollbar { display: none; }
+
+.stat-tile {
+  min-width: 130px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.stat-tile::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.stat-tile.s-amber::before { background: var(--accent); }
+.stat-tile.s-green::before { background: var(--green); }
+.stat-tile.s-blue::before { background: var(--blue); }
+.stat-tile.s-red::before { background: var(--red); }
+.stat-tile-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.stat-tile-value { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: var(--text); line-height: 1; }
+.stat-tile-meta { font-size: 10px; color: var(--text3); margin-top: 5px; }
+.stat-tile-bg { position: absolute; bottom: 8px; right: 10px; font-size: 26px; opacity: 0.07; }
+.up { color: var(--green); } .dn { color: var(--red); }
+
+/* Mini bar chart */
+.mini-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 52px;
+  padding-top: 4px;
+}
+.mc-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.mc-bar { width: 100%; border-radius: 3px 3px 0 0; background: var(--accent); opacity: 0.6; transition: opacity 0.15s; }
+.mc-bar:hover { opacity: 1; }
+.mc-bar.today { background: var(--green); opacity: 1; }
+.mc-lbl { font-size: 8px; color: var(--text3); }
+
+/* Category bar */
+.cat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.cat-label { font-size: 11px; color: var(--text2); width: 90px; flex-shrink: 0; }
+.cat-bar-wrap { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.cat-bar { height: 100%; border-radius: 3px; }
+.cat-count { font-size: 10px; color: var(--text3); width: 40px; text-align: right; }
+
+/* Order row */
+.order-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.order-row:last-child { border: none; padding-bottom: 0; }
+.order-icon-wrap {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.oi-pending { background: rgba(244,166,35,0.12); }
+.oi-preparing { background: rgba(59,130,246,0.12); }
+.oi-dispatched { background: rgba(34,197,94,0.12); }
+.order-info { flex: 1; min-width: 0; }
+.order-id { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; color: var(--accent); }
+.order-parts { font-size: 11px; color: var(--text3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.order-amount { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: var(--text); }
+
+/* ══════════════════════════════════════════════════ */
+/* PAGE: KOT */
+/* ══════════════════════════════════════════════════ */
+#page-kot { background: var(--bg); }
+
+.kot-header-bar {
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
+}
+.kot-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.2);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  color: var(--red);
+  font-weight: 700;
+  margin-top: 4px;
+}
+.kot-count-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: blink 1s infinite; }
+
+.kot-card-mobile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.kot-card-mobile.urgent { border-color: rgba(239,68,68,0.4); }
+
+.kot-card-top {
+  padding: 14px 16px 10px;
+}
+.kot-card-tags { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.kot-urgency { background: var(--red); color: #fff; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.5px; }
+.kot-standard { background: var(--surface2); color: var(--text3); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+.kot-time-tag { background: var(--surface2); color: var(--text3); font-size: 10px; padding: 2px 8px; border-radius: 4px; margin-left: auto; }
+
+.kot-vrn-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.kot-vrn { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--text); letter-spacing: 1px; }
+.kot-order-num { font-size: 11px; color: var(--text3); }
+
+.kot-delivery-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+
+.kot-parts-list {
+  background: var(--surface2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.kot-part-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.kot-part-item:last-child { border: none; }
+.kot-part-name { font-size: 12px; color: var(--text2); }
+.kot-part-qty { font-size: 12px; font-weight: 700; color: var(--text); }
+
+.kot-action-bar {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+.kot-action-btn {
+  flex: 1;
+  padding: 14px;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+.kot-action-btn:hover { opacity: 0.8; }
+.kot-btn-reject { background: var(--surface2); color: var(--text3); }
+.kot-btn-accept { background: var(--green); color: #fff; }
+
+/* Swipe hint */
+.swipe-hint { text-align: center; font-size: 11px; color: var(--text3); padding: 8px 0 16px; }
+
+/* ══════════════════════════════════════════════════ */
+/* PAGE: INVENTORY */
+/* ══════════════════════════════════════════════════ */
+#page-inventory { background: var(--bg); }
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 11px 14px;
+  margin: 0 20px 14px;
+}
+.search-bar input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+}
+.search-bar input::placeholder { color: var(--text3); }
+.search-icon { font-size: 16px; }
+
+.cat-filter-scroll {
+  display: flex;
+  gap: 6px;
+  padding: 0 20px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.cat-filter-scroll::-webkit-scrollbar { display: none; }
+.cat-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text3);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+}
+.cat-chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+.inv-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.inv-item.low-stock { border-color: rgba(239,68,68,0.3); }
+.inv-icon-wrap {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.inv-info { flex: 1; min-width: 0; }
+.inv-name { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 3px; }
+.inv-cat { font-size: 10px; color: var(--text3); margin-bottom: 5px; }
+.inv-bottom { display: flex; align-items: center; justify-content: space-between; }
+.inv-stock { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; }
+.inv-stock.ok { color: var(--text); }
+.inv-stock.low { color: var(--red); }
+.inv-demand { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 8px; }
+.inv-demand.hot { background: rgba(239,68,68,0.12); color: var(--red); }
+.inv-demand.normal { background: rgba(59,130,246,0.12); color: var(--blue); }
+
+/* Add FAB */
+.fab {
+  position: absolute;
+  bottom: 90px;
+  right: 20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #000;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(244,166,35,0.4);
+  z-index: 50;
+  transition: transform 0.15s;
+}
+.fab:hover { transform: scale(1.05); }
+
+/* ══════════════════════════════════════════════════ */
+/* PAGE: ORDERS */
+/* ══════════════════════════════════════════════════ */
+#page-orders { background: var(--bg); }
+
+.orders-filter-row {
+  display: flex;
+  gap: 6px;
+  padding: 0 20px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.orders-filter-row::-webkit-scrollbar { display: none; }
+
+.order-card-mobile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.ocm-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.ocm-id { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: var(--accent); }
+.ocm-amount { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: var(--text); }
+.ocm-vrn { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+.ocm-parts { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+.ocm-bottom { display: flex; align-items: center; gap: 6px; }
+.ocm-delivery { font-size: 11px; color: var(--text3); background: var(--surface2); padding: 2px 8px; border-radius: 6px; }
+.ocm-time { font-size: 11px; color: var(--text3); margin-left: auto; }
+
+/* ══════════════════════════════════════════════════ */
+/* PAGE: ALERTS */
+/* ══════════════════════════════════════════════════ */
+#page-alerts { background: var(--bg); }
+
+.alert-card {
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.alert-card.a-red { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.25); }
+.alert-card.a-orange { background: rgba(244,166,35,0.06); border: 1px solid rgba(244,166,35,0.2); }
+.alert-card.a-blue { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); }
+.alert-emoji { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+.alert-body .a-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.alert-body .a-desc { font-size: 11px; color: var(--text3); line-height: 1.5; }
+.alert-restock-btn {
+  margin-top: 8px;
+  background: var(--accent);
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-block;
+}
+
+/* ══════════════════════════════════════════════════ */
+/* PAGE: PROFILE */
+/* ══════════════════════════════════════════════════ */
+#page-profile { background: var(--bg); }
+
+.profile-avatar {
+  width: 72px; height: 72px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--accent), #e8580c);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 24px;
+  color: #000;
+  flex-shrink: 0;
+}
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px 20px;
+  flex-shrink: 0;
+}
+.profile-biz-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: var(--text); }
+.profile-type { font-size: 12px; color: var(--accent); margin-top: 2px; }
+.profile-verified { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--green); margin-top: 4px; }
+
+.form-group { margin-bottom: 12px; }
+.form-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; display: block; }
+.form-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  outline: none;
+}
+.form-input:focus { border-color: var(--accent); }
+select.form-input { appearance: none; }
+
+.save-btn {
+  width: 100%;
+  background: var(--accent);
+  color: #000;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.15s;
+}
+.save-btn:hover { opacity: 0.85; }
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.menu-item-icon { font-size: 20px; width: 36px; height: 36px; background: var(--surface2); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.menu-item-label { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+.menu-item-arrow { font-size: 12px; color: var(--text3); }
+.menu-item.danger .menu-item-label { color: var(--red); }
+
+/* ── SUBSCRIPTION PAGE ────────────────────────────── */
+.sub-hero {
+  background: linear-gradient(135deg, #1a1200, #0c0d0f);
+  padding: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.sub-hero-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--text); margin-bottom: 6px; }
+.sub-hero-sub { font-size: 12px; color: var(--text3); }
+.current-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(244,166,35,0.12);
+  border: 1px solid rgba(244,166,35,0.25);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: 8px;
+}
+
+.plan-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 12px;
+  position: relative;
+}
+.plan-card.recommended { border-color: var(--accent); }
+.plan-badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #000; font-size: 10px; font-weight: 800; padding: 2px 12px; border-radius: 10px; white-space: nowrap; }
+.plan-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; margin-bottom: 2px; }
+.plan-price { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; color: var(--accent); }
+.plan-price small { font-size: 12px; color: var(--text3); font-weight: 400; }
+.plan-features { margin: 12px 0; display: flex; flex-direction: column; gap: 6px; }
+.plan-feat { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 7px; }
+.plan-feat::before { content: '✓'; color: var(--green); font-weight: 800; }
+.plan-btn { width: 100%; padding: 13px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-family: 'DM Sans', sans-serif; }
+.plan-btn.fill { background: var(--accent); border-color: var(--accent); color: #000; }
+.plan-btn:hover { opacity: 0.85; }
+
+/* ── TOAST ────────────────────────────────────────── */
+.toast {
+  position: absolute;
+  bottom: 90px;
+  left: 20px;
+  right: 20px;
+  background: #1c1e22;
+  border: 1px solid var(--green);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text);
+  z-index: 999;
+  transform: translateY(20px);
+  opacity: 0;
+  transition: all 0.25s;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+/* ── ANIMATIONS ───────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page.active > * { animation: fadeUp 0.25s ease forwards; }
+</style>
+</head>
+<body>
+
+<div class="phone-shell">
+  <!-- Dynamic Island -->
+  <div class="dynamic-island">
+    <div class="di-dot"></div>
+    <div class="di-dot cam"></div>
+    <div class="di-dot"></div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-time" id="mClock">9:41</div>
+    <div class="status-icons">
+      <span>📶</span>
+      <span>WiFi</span>
+      <div class="battery"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Screen -->
+  <div class="screen">
+
+    <!-- ═══════════ PAGE: DASHBOARD ═══════════ -->
+    <div class="page active" id="page-dashboard">
+      <div class="dash-hero">
+        <div class="dash-greeting">Good morning 👋</div>
+        <div class="dash-name">Sharma Auto Parts</div>
+        <div class="dash-type"><span class="live-dot"></span> Store Owner · Live</div>
+        <div class="dash-date" id="mDate">Mon, 23 Feb 2026</div>
+      </div>
+
+      <div class="filter-row">
+        <div class="filter-chip active" onclick="filterDash('today',this)">Today</div>
+        <div class="filter-chip" onclick="filterDash('week',this)">This Week</div>
+        <div class="filter-chip" onclick="filterDash('month',this)">This Month</div>
+      </div>
+
+      <!-- Stats scroll -->
+      <div class="stats-scroll">
+        <div class="stat-tile s-amber">
+          <div class="stat-tile-bg">💰</div>
+          <div class="stat-tile-label">Sales</div>
+          <div class="stat-tile-value">₹<span id="m-sales">24,850</span></div>
+          <div class="stat-tile-meta"><span class="up">↑ 12%</span></div>
+        </div>
+        <div class="stat-tile s-green">
+          <div class="stat-tile-bg">📦</div>
+          <div class="stat-tile-label">In Stock</div>
+          <div class="stat-tile-value" id="m-stock">1,248</div>
+          <div class="stat-tile-meta"><span class="dn">↓ 34</span> sold</div>
+        </div>
+        <div class="stat-tile s-blue">
+          <div class="stat-tile-bg">🛒</div>
+          <div class="stat-tile-label">Orders</div>
+          <div class="stat-tile-value" id="m-orders">18</div>
+          <div class="stat-tile-meta"><span class="up">↑ 4</span></div>
+        </div>
+        <div class="stat-tile s-red">
+          <div class="stat-tile-bg">⚠️</div>
+          <div class="stat-tile-label">Low Stock</div>
+          <div class="stat-tile-value">5</div>
+          <div class="stat-tile-meta"><span class="dn">Restock!</span></div>
+        </div>
+      </div>
+
+      <div class="page-scroll">
+        <!-- Sales chart -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="card-title">Sales This Week</div>
+            <div style="font-size:11px;color:var(--accent)">₹1,42,300 total</div>
+          </div>
+          <div class="mini-chart">
+            <div class="mc-col"><div class="mc-bar" style="height:30px"></div><div class="mc-lbl">M</div></div>
+            <div class="mc-col"><div class="mc-bar" style="height:44px"></div><div class="mc-lbl">T</div></div>
+            <div class="mc-col"><div class="mc-bar" style="height:26px"></div><div class="mc-lbl">W</div></div>
+            <div class="mc-col"><div class="mc-bar" style="height:52px"></div><div class="mc-lbl">T</div></div>
+            <div class="mc-col"><div class="mc-bar" style="height:38px"></div><div class="mc-lbl">F</div></div>
+            <div class="mc-col"><div class="mc-bar today" style="height:48px"></div><div class="mc-lbl" style="color:var(--green)">S</div></div>
+            <div class="mc-col"><div class="mc-bar" style="height:12px;opacity:0.2"></div><div class="mc-lbl">S</div></div>
+          </div>
+        </div>
+
+        <!-- Parts breakdown -->
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px">Parts Sold Today</div>
+          <div class="cat-row">
+            <div class="cat-label">Maintenance</div>
+            <div class="cat-bar-wrap"><div class="cat-bar" style="width:78%;background:var(--accent)"></div></div>
+            <div class="cat-count">156</div>
+          </div>
+          <div class="cat-row">
+            <div class="cat-label">Oils</div>
+            <div class="cat-bar-wrap"><div class="cat-bar" style="width:55%;background:var(--blue)"></div></div>
+            <div class="cat-count">110</div>
+          </div>
+          <div class="cat-row">
+            <div class="cat-label">Filters</div>
+            <div class="cat-bar-wrap"><div class="cat-bar" style="width:38%;background:var(--green)"></div></div>
+            <div class="cat-count">76</div>
+          </div>
+          <div class="cat-row">
+            <div class="cat-label">Lights</div>
+            <div class="cat-bar-wrap"><div class="cat-bar" style="width:22%;background:var(--purple)"></div></div>
+            <div class="cat-count">44</div>
+          </div>
+          <div class="cat-row" style="margin-bottom:0">
+            <div class="cat-label">MODEX</div>
+            <div class="cat-bar-wrap"><div class="cat-bar" style="width:10%;background:var(--red)"></div></div>
+            <div class="cat-count">20</div>
+          </div>
+        </div>
+
+        <!-- Recent orders -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div class="card-title">Recent Orders</div>
+            <div style="font-size:11px;color:var(--accent);cursor:pointer" onclick="switchTab('orders')">All →</div>
+          </div>
+          <div class="order-row">
+            <div class="order-icon-wrap oi-pending">🕐</div>
+            <div class="order-info">
+              <div class="order-id">#API-0025</div>
+              <div class="order-parts">Brake Pads × 1, Brake Fluid × 1</div>
+            </div>
+            <div style="text-align:right">
+              <div class="order-amount">₹1,480</div>
+              <span class="pill pill-orange" style="font-size:10px">Pending</span>
+            </div>
+          </div>
+          <div class="order-row">
+            <div class="order-icon-wrap oi-preparing">⚙️</div>
+            <div class="order-info">
+              <div class="order-id">#API-0024</div>
+              <div class="order-parts">Air Filter × 2, Oil × 1</div>
+            </div>
+            <div style="text-align:right">
+              <div class="order-amount">₹2,860</div>
+              <span class="pill pill-blue" style="font-size:10px">Preparing</span>
+            </div>
+          </div>
+          <div class="order-row">
+            <div class="order-icon-wrap oi-dispatched">✅</div>
+            <div class="order-info">
+              <div class="order-id">#API-0022</div>
+              <div class="order-parts">Coolant × 2, Bulbs × 4</div>
+            </div>
+            <div style="text-align:right">
+              <div class="order-amount">₹2,100</div>
+              <span class="pill pill-green" style="font-size:10px">Done</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE: KOT ═══════════ -->
+    <div class="page" id="page-kot">
+      <div class="kot-header-bar">
+        <div class="page-header-title">KOT Orders</div>
+        <div class="kot-count-badge">
+          <span class="kot-count-dot"></span>
+          <span id="kotCountLabel">3 awaiting preparation</span>
+        </div>
+      </div>
+
+      <div class="page-scroll" style="padding-top:0">
+        <!-- KOT Card 1 - Urgent -->
+        <div class="kot-card-mobile urgent" id="mkot-1">
+          <div class="kot-card-top">
+            <div class="kot-card-tags">
+              <span class="kot-urgency">🔴 URGENT</span>
+              <span class="kot-time-tag">Just now</span>
+            </div>
+            <div class="kot-vrn-row">
+              <div class="kot-vrn">KA 05 MX 4821</div>
+              <div class="kot-order-num">#API-0025</div>
+            </div>
+            <div class="kot-delivery-row">
+              <span class="pill pill-blue" style="font-size:11px">📦 Courier</span>
+              <span style="font-size:11px;color:var(--text3);margin-left:6px">⏱ High Priority</span>
+            </div>
+            <div class="kot-parts-list">
+              <div class="kot-part-item">
+                <div class="kot-part-name">Brake Pads (Front)</div>
+                <div class="kot-part-qty">× 1 set</div>
+              </div>
+              <div class="kot-part-item">
+                <div class="kot-part-name">Brake Fluid DOT4</div>
+                <div class="kot-part-qty">× 1</div>
+              </div>
+            </div>
+          </div>
+          <div class="kot-action-bar">
+            <button class="kot-action-btn kot-btn-reject" onclick="kotAction('mkot-1','reject')">✕ Reject</button>
+            <button class="kot-action-btn kot-btn-accept" onclick="kotAction('mkot-1','accept')">✓ Accept</button>
+          </div>
+        </div>
+
+        <!-- KOT Card 2 -->
+        <div class="kot-card-mobile" id="mkot-2">
+          <div class="kot-card-top">
+            <div class="kot-card-tags">
+              <span class="kot-standard">STANDARD</span>
+              <span class="kot-time-tag">8 min ago</span>
+            </div>
+            <div class="kot-vrn-row">
+              <div class="kot-vrn">KA 01 AB 7743</div>
+              <div class="kot-order-num">#API-0024</div>
+            </div>
+            <div class="kot-delivery-row">
+              <span class="pill pill-green" style="font-size:11px">🏪 Pickup</span>
+              <span style="font-size:11px;color:var(--text3);margin-left:6px">⏱ 15 min ETA</span>
+            </div>
+            <div class="kot-parts-list">
+              <div class="kot-part-item">
+                <div class="kot-part-name">Air Filter (OEM)</div>
+                <div class="kot-part-qty">× 2</div>
+              </div>
+              <div class="kot-part-item">
+                <div class="kot-part-name">Engine Oil 5W30</div>
+                <div class="kot-part-qty">× 1 can</div>
+              </div>
+              <div class="kot-part-item">
+                <div class="kot-part-name">Spark Plugs NGK</div>
+                <div class="kot-part-qty">× 4</div>
+              </div>
+            </div>
+          </div>
+          <div class="kot-action-bar">
+            <button class="kot-action-btn kot-btn-reject" onclick="kotAction('mkot-2','reject')">✕ Reject</button>
+            <button class="kot-action-btn kot-btn-accept" onclick="kotAction('mkot-2','accept')">✓ Accept</button>
+          </div>
+        </div>
+
+        <!-- KOT Card 3 -->
+        <div class="kot-card-mobile" id="mkot-3">
+          <div class="kot-card-top">
+            <div class="kot-card-tags">
+              <span class="kot-standard">STANDARD</span>
+              <span class="kot-time-tag">14 min ago</span>
+            </div>
+            <div class="kot-vrn-row">
+              <div class="kot-vrn">MH 12 ZZ 9901</div>
+              <div class="kot-order-num">#API-0023</div>
+            </div>
+            <div class="kot-delivery-row">
+              <span class="pill pill-blue" style="font-size:11px">📦 Courier</span>
+              <span style="font-size:11px;color:var(--text3);margin-left:6px">⏱ Standard</span>
+            </div>
+            <div class="kot-parts-list">
+              <div class="kot-part-item">
+                <div class="kot-part-name">Headlight Bulb H4</div>
+                <div class="kot-part-qty">× 2</div>
+              </div>
+            </div>
+          </div>
+          <div class="kot-action-bar">
+            <button class="kot-action-btn kot-btn-reject" onclick="kotAction('mkot-3','reject')">✕ Reject</button>
+            <button class="kot-action-btn kot-btn-accept" onclick="kotAction('mkot-3','accept')">✓ Accept</button>
+          </div>
+        </div>
+
+        <!-- Completed -->
+        <div class="section-label" style="padding-top:4px">✅ Completed Today</div>
+        <div class="order-card-mobile">
+          <div class="ocm-top">
+            <div class="ocm-id" style="color:var(--green)">#API-0022</div>
+            <div class="ocm-amount">₹2,100</div>
+          </div>
+          <div class="ocm-vrn">KA 03 PQ 3312 · Coolant × 2, Bulbs × 4</div>
+          <div class="ocm-bottom">
+            <div class="ocm-delivery">📦 Courier</div>
+            <div class="ocm-time">Done at 10:32 AM</div>
+          </div>
+        </div>
+        <div class="order-card-mobile">
+          <div class="ocm-top">
+            <div class="ocm-id" style="color:var(--green)">#API-0021</div>
+            <div class="ocm-amount">₹380</div>
+          </div>
+          <div class="ocm-vrn">KA 05 AB 1122 · Wiper Blades × 1 pair</div>
+          <div class="ocm-bottom">
+            <div class="ocm-delivery">🏪 Pickup</div>
+            <div class="ocm-time">Done at 9:15 AM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE: INVENTORY ═══════════ -->
+    <div class="page" id="page-inventory">
+      <div class="page-header">
+        <div>
+          <div class="page-header-title">Inventory</div>
+          <div class="page-header-sub">1,248 parts · 5 categories</div>
+        </div>
+      </div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search parts, brands...">
+      </div>
+      <div class="cat-filter-scroll">
+        <div class="cat-chip active" onclick="setCatFilter(this)">All</div>
+        <div class="cat-chip" onclick="setCatFilter(this)">Maintenance</div>
+        <div class="cat-chip" onclick="setCatFilter(this)">Oils</div>
+        <div class="cat-chip" onclick="setCatFilter(this)">Filters</div>
+        <div class="cat-chip" onclick="setCatFilter(this)">Lights</div>
+        <div class="cat-chip" onclick="setCatFilter(this)">MODEX</div>
+      </div>
+
+      <div class="page-scroll" style="padding-top:0">
+        <div class="inv-item low-stock">
+          <div class="inv-icon-wrap">🛞</div>
+          <div class="inv-info">
+            <div class="inv-name">Brake Pads (Front) – Honda City</div>
+            <div class="inv-cat">Maintenance</div>
+            <div class="inv-bottom">
+              <div><span class="inv-stock ok">42</span> <span style="font-size:10px;color:var(--text3)">in stock</span></div>
+              <div class="inv-demand hot">HIGH ↑</div>
+            </div>
+          </div>
+        </div>
+        <div class="inv-item low-stock">
+          <div class="inv-icon-wrap">🛢️</div>
+          <div class="inv-info">
+            <div class="inv-name">Engine Oil 5W30 – 1L</div>
+            <div class="inv-cat">Oils & Lubricants</div>
+            <div class="inv-bottom">
+              <div><span class="inv-stock low">8</span> <span style="font-size:10px;color:var(--red)">LOW STOCK</span></div>
+              <div class="inv-demand hot">HIGH ↑</div>
+            </div>
+          </div>
+        </div>
+        <div class="inv-item">
+          <div class="inv-icon-wrap">🌪️</div>
+          <div class="inv-info">
+            <div class="inv-name">Air Filter OEM – Maruti Suzuki</div>
+            <div class="inv-cat">Filters</div>
+            <div class="inv-bottom">
+              <div><span class="inv-stock ok">65</span> <span style="font-size:10px;color:var(--text3)">in stock</span></div>
+              <div style="font-size:10px;color:var(--text3)">28 sold</div>
+            </div>
+          </div>
+        </div>
+        <div class="inv-item">
+          <div class="inv-icon-wrap">⚡</div>
+          <div class="inv-info">
+            <div class="inv-name">Spark Plugs NGK – Universal</div>
+            <div class="inv-cat">Maintenance</div>
+            <div class="inv-bottom">
+              <div><span class="inv-stock ok">120</span> <span style="font-size:10px;color:var(--text3)">in stock</span></div>
+              <div style="font-size:10px;color:var(--text3)">45 sold</div>
+            </div>
+          </div>
+        </div>
+        <div class="inv-item low-stock">
+          <div class="inv-icon-wrap">💧</div>
+          <div class="inv-info">
+            <div class="inv-name">Coolant Blue Star – 1L</div>
+            <div class="inv-cat">Oils & Lubricants</div>
+            <div class="inv-bottom">
+              <div><span class="inv-stock low">5</span> <span style="font-size:10px;color:var(--red)">LOW STOCK</span></div>
+              <div class="inv-demand hot">HIGH ↑</div>
+            </div>
+          </div>
+        </div>
+        <div class="inv-item">
+          <div class="inv-icon-wrap">💡</div>
+          <div class="inv-info">
+            <div class="inv-name">Headlight Bulb H4 – Universal</div>
+            <div class="inv-cat">Lights</div>
+            <div class="inv-bottom">
+              <div><span class="inv-stock ok">18</span> <span style="font-size:10px;color:var(--accent)">LOW</span></div>
+              <div style="font-size:10px;color:var(--text3)">22 sold</div>
+            </div>
+          </div>
+        </div>
+        <div class="inv-item low-stock">
+          <div class="inv-icon-wrap">🔧</div>
+          <div class="inv-info">
+            <div class="inv-name">Brake Fluid DOT4 – 500ml</div>
+            <div class="inv-cat">Maintenance</div>
+            <div class="inv-bottom">
+              <div><span class="inv-stock low">3</span> <span style="font-size:10px;color:var(--red)">CRITICAL</span></div>
+              <div class="inv-demand normal">RISING</div>
+            </div>
+          </div>
+        </div>
+        <div style="height:60px"></div>
+      </div>
+      <div class="fab" onclick="showToast('Add Part form opening...')">+</div>
+    </div>
+
+    <!-- ═══════════ PAGE: ORDERS ═══════════ -->
+    <div class="page" id="page-orders">
+      <div class="page-header">
+        <div>
+          <div class="page-header-title">Orders</div>
+          <div class="page-header-sub">18 orders today</div>
+        </div>
+      </div>
+      <div class="orders-filter-row">
+        <div class="filter-chip active" onclick="setOrderFilter(this)">All</div>
+        <div class="filter-chip" onclick="setOrderFilter(this)">Pending</div>
+        <div class="filter-chip" onclick="setOrderFilter(this)">Preparing</div>
+        <div class="filter-chip" onclick="setOrderFilter(this)">Dispatched</div>
+        <div class="filter-chip" onclick="setOrderFilter(this)">Cancelled</div>
+      </div>
+      <div class="page-scroll" style="padding-top:0">
+        <div class="order-card-mobile">
+          <div class="ocm-top"><div class="ocm-id">#API-0025</div><div class="ocm-amount">₹1,480</div></div>
+          <div class="ocm-vrn">🚘 KA 05 MX 4821 · SVO</div>
+          <div class="ocm-parts">Brake Pads × 1, Brake Fluid × 1</div>
+          <div class="ocm-bottom">
+            <div class="ocm-delivery">📦 Courier</div>
+            <span class="pill pill-orange">Pending</span>
+            <div class="ocm-time">Just now</div>
+          </div>
+        </div>
+        <div class="order-card-mobile">
+          <div class="ocm-top"><div class="ocm-id">#API-0024</div><div class="ocm-amount">₹2,860</div></div>
+          <div class="ocm-vrn">🚘 KA 01 AB 7743 · PL</div>
+          <div class="ocm-parts">Air Filter × 2, Oil × 1, Spark Plugs × 4</div>
+          <div class="ocm-bottom">
+            <div class="ocm-delivery">🏪 Pickup</div>
+            <span class="pill pill-blue">Preparing</span>
+            <div class="ocm-time">8 min ago</div>
+          </div>
+        </div>
+        <div class="order-card-mobile">
+          <div class="ocm-top"><div class="ocm-id">#API-0023</div><div class="ocm-amount">₹640</div></div>
+          <div class="ocm-vrn">🚘 MH 12 ZZ 9901 · SVO</div>
+          <div class="ocm-parts">Headlight Bulb H4 × 2</div>
+          <div class="ocm-bottom">
+            <div class="ocm-delivery">📦 Courier</div>
+            <span class="pill pill-blue">Preparing</span>
+            <div class="ocm-time">14 min ago</div>
+          </div>
+        </div>
+        <div class="order-card-mobile">
+          <div class="ocm-top"><div class="ocm-id">#API-0022</div><div class="ocm-amount">₹2,100</div></div>
+          <div class="ocm-vrn">🚘 KA 03 PQ 3312 · PL</div>
+          <div class="ocm-parts">Coolant × 2, Bulbs × 4</div>
+          <div class="ocm-bottom">
+            <div class="ocm-delivery">📦 Courier</div>
+            <span class="pill pill-green">Dispatched</span>
+            <div class="ocm-time">10:32 AM</div>
+          </div>
+        </div>
+        <div class="order-card-mobile">
+          <div class="ocm-top"><div class="ocm-id">#API-0021</div><div class="ocm-amount">₹380</div></div>
+          <div class="ocm-vrn">🚘 KA 05 AB 1122 · SVO</div>
+          <div class="ocm-parts">Wiper Blades × 1 pair</div>
+          <div class="ocm-bottom">
+            <div class="ocm-delivery">🏪 Pickup</div>
+            <span class="pill pill-green">Dispatched</span>
+            <div class="ocm-time">09:15 AM</div>
+          </div>
+        </div>
+        <div class="order-card-mobile">
+          <div class="ocm-top"><div class="ocm-id">#API-0019</div><div class="ocm-amount">₹280</div></div>
+          <div class="ocm-vrn">🚘 KA 09 MN 8821 · SVO</div>
+          <div class="ocm-parts">Oil Filter × 1</div>
+          <div class="ocm-bottom">
+            <div class="ocm-delivery">📦 Courier</div>
+            <span class="pill pill-red">Cancelled</span>
+            <div class="ocm-time">08:50 AM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE: PROFILE ═══════════ -->
+    <div class="page" id="page-profile">
+      <!-- Profile hero -->
+      <div class="profile-hero">
+        <div class="profile-avatar">SA</div>
+        <div>
+          <div class="profile-biz-name">Sharma Auto Parts</div>
+          <div class="profile-type">Store Owner (SO)</div>
+          <div class="profile-verified">✓ Active & Verified</div>
+        </div>
+      </div>
+
+      <div class="page-scroll" style="padding-top:0">
+        <!-- Quick menu -->
+        <div class="section-label">Account</div>
+        <div class="menu-item" onclick="showProfile('info')">
+          <div class="menu-item-icon">🏪</div>
+          <div class="menu-item-label">Business Info</div>
+          <div class="menu-item-arrow">›</div>
+        </div>
+        <div class="menu-item" onclick="showProfile('ops')">
+          <div class="menu-item-icon">📞</div>
+          <div class="menu-item-label">Contact & Operations</div>
+          <div class="menu-item-arrow">›</div>
+        </div>
+        <div class="menu-item" onclick="switchTab('subscription')">
+          <div class="menu-item-icon">⭐</div>
+          <div class="menu-item-label">Subscription — Free</div>
+          <div class="menu-item-arrow" style="color:var(--accent)">Upgrade</div>
+        </div>
+
+        <div class="section-label">Business Info</div>
+        <div class="card" style="border-radius:16px">
+          <div class="form-group">
+            <label class="form-label">Business Name</label>
+            <input class="form-input" value="Sharma Auto Parts">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vendor Type</label>
+            <select class="form-input"><option>Store Owner (SO)</option><option>Petrol Bunk Owner (PBO)</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">GST Number</label>
+            <input class="form-input" value="29AABCU9603R1ZM">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Zone / Area</label>
+            <input class="form-input" value="Koramangala, Bangalore">
+          </div>
+        </div>
+
+        <div class="section-label">Contact & Operations</div>
+        <div class="card" style="border-radius:16px">
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input class="form-input" value="+91 98765 43210">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input class="form-input" value="sharma@autoparts.in">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Operating Hours</label>
+            <input class="form-input" value="9:00 AM – 8:00 PM">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Delivery Radius (km)</label>
+            <input class="form-input" type="number" value="5">
+          </div>
+        </div>
+
+        <button class="save-btn" onclick="showToast('Profile saved! ✓')">Save All Changes</button>
+
+        <div class="section-label" style="margin-top:16px">More</div>
+        <div class="menu-item danger">
+          <div class="menu-item-icon" style="background:rgba(239,68,68,0.12)">🚪</div>
+          <div class="menu-item-label">Logout</div>
+          <div class="menu-item-arrow">›</div>
+        </div>
+        <div style="height:20px"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE: ALERTS ═══════════ -->
+    <div class="page" id="page-alerts">
+      <div class="page-header">
+        <div>
+          <div class="page-header-title">Alerts</div>
+          <div class="page-header-sub">5 require attention</div>
+        </div>
+        <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--red);font-weight:700">5 active</div>
+      </div>
+      <div class="page-scroll" style="padding-top:0">
+        <div class="section-label">🔴 Low Stock — Critical</div>
+        <div class="alert-card a-red">
+          <div class="alert-emoji">⚠️</div>
+          <div class="alert-body">
+            <div class="a-title">Engine Oil 5W30 – Critically Low</div>
+            <div class="a-desc">Only 8 units left. Daily demand: 15. Restock immediately.</div>
+            <div class="alert-restock-btn" onclick="showToast('Restock request sent!')">Request Restock</div>
+          </div>
+        </div>
+        <div class="alert-card a-red">
+          <div class="alert-emoji">⚠️</div>
+          <div class="alert-body">
+            <div class="a-title">Brake Fluid DOT4 – Low Stock</div>
+            <div class="a-desc">Only 3 units. 2 active KOTs are waiting on this part.</div>
+            <div class="alert-restock-btn" onclick="showToast('Restock request sent!')">Request Restock</div>
+          </div>
+        </div>
+        <div class="alert-card a-red">
+          <div class="alert-emoji">⚠️</div>
+          <div class="alert-body">
+            <div class="a-title">Coolant Blue Star – Low Stock</div>
+            <div class="a-desc">5 units left. Restock within 24 hours recommended.</div>
+            <div class="alert-restock-btn" onclick="showToast('Restock request sent!')">Request Restock</div>
+          </div>
+        </div>
+
+        <div class="section-label">📈 Demand Signals</div>
+        <div class="alert-card a-orange">
+          <div class="alert-emoji">🔥</div>
+          <div class="alert-body">
+            <div class="a-title">Brake Pads – Rising Fast</div>
+            <div class="a-desc">Demand up 80% vs last week. 28 sold today. Consider bulk order.</div>
+          </div>
+        </div>
+        <div class="alert-card a-blue">
+          <div class="alert-emoji">📊</div>
+          <div class="alert-body">
+            <div class="a-title">Engine Oil – Top SKU Signal</div>
+            <div class="a-desc">Highest-velocity part in your store. Bulk supply reduces stockout risk.</div>
+          </div>
+        </div>
+        <div style="height:20px"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════ PAGE: SUBSCRIPTION ═══════════ -->
+    <div class="page" id="page-subscription">
+      <div class="sub-hero">
+        <div class="sub-hero-title">Upgrade Your Plan</div>
+        <div class="sub-hero-sub">Unlock analytics, priority listing & lower commissions</div>
+        <div class="current-plan-badge">⭐ Currently: Free Plan</div>
+      </div>
+      <div class="page-scroll">
+        <div class="plan-card">
+          <div class="plan-name">Basic</div>
+          <div class="plan-price">Free <small>/ forever</small></div>
+          <div class="plan-features">
+            <div class="plan-feat">Dashboard & KOT access</div>
+            <div class="plan-feat">Up to 50 parts listed</div>
+            <div class="plan-feat">Standard commission</div>
+            <div class="plan-feat">Basic order management</div>
+          </div>
+          <button class="plan-btn" disabled style="opacity:0.5;cursor:not-allowed">Current Plan</button>
+        </div>
+        <div class="plan-card recommended">
+          <div class="plan-badge">⭐ Recommended</div>
+          <div class="plan-name">Pro</div>
+          <div class="plan-price">₹999 <small>/ month</small></div>
+          <div class="plan-features">
+            <div class="plan-feat">Everything in Basic</div>
+            <div class="plan-feat">Priority listing in search</div>
+            <div class="plan-feat">Inventory analytics</div>
+            <div class="plan-feat">Unlimited parts</div>
+            <div class="plan-feat">Reduced commission slab</div>
+            <div class="plan-feat">Demand forecasting signals</div>
+          </div>
+          <button class="plan-btn fill" onclick="showToast('Pro activated! Welcome 🎉')">Upgrade to Pro</button>
+        </div>
+        <div class="plan-card">
+          <div class="plan-name">Enterprise</div>
+          <div class="plan-price">₹4,999 <small>/ month</small></div>
+          <div class="plan-features">
+            <div class="plan-feat">Everything in Pro</div>
+            <div class="plan-feat">Multi-location support</div>
+            <div class="plan-feat">API data access</div>
+            <div class="plan-feat">Dedicated account manager</div>
+            <div class="plan-feat">SLA-based scoring</div>
+            <div class="plan-feat">Lowest commission rate</div>
+          </div>
+          <button class="plan-btn" onclick="showToast('Team will contact you within 24hrs!')">Contact Sales</button>
+        </div>
+        <div style="height:20px"></div>
+      </div>
+    </div>
+
+  </div><!-- /screen -->
+
+  <!-- ═══════════ BOTTOM TAB BAR ═══════════ -->
+  <div class="tab-bar">
+    <div class="tab-item active" id="tab-dashboard" onclick="switchTab('dashboard')">
+      <div class="tab-icon">📊</div>
+      <div class="tab-label">Dashboard</div>
+    </div>
+    <div class="tab-item" id="tab-kot" onclick="switchTab('kot')">
+      <div class="tab-icon">🎫</div>
+      <div class="tab-label">KOT</div>
+      <div class="tab-dot" id="kotTabDot"></div>
+    </div>
+    <div class="tab-item" id="tab-inventory" onclick="switchTab('inventory')">
+      <div class="tab-icon">📦</div>
+      <div class="tab-label">Inventory</div>
+    </div>
+    <div class="tab-item" id="tab-orders" onclick="switchTab('orders')">
+      <div class="tab-icon">🛒</div>
+      <div class="tab-label">Orders</div>
+    </div>
+    <div class="tab-item" id="tab-profile" onclick="switchTab('profile')">
+      <div class="tab-icon">👤</div>
+      <div class="tab-label">Profile</div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="mToast">
+    <div class="toast-dot"></div>
+    <span id="mToastMsg">Done</span>
+  </div>
+</div>
+
+<!-- Page label outside phone -->
+<div style="position:fixed;top:20px;left:50%;transform:translateX(-50%);text-align:center;color:#3a3a4a;font-size:12px;font-family:'DM Sans',sans-serif;letter-spacing:0.5px;pointer-events:none;">
+  API Vendor · Mobile UI · Interactive Prototype
+</div>
+
+<script>
+  // Clock
+  function tick() {
+    const now = new Date();
+    let h = now.getHours(), m = now.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    document.getElementById('mClock').textContent = `${h}:${m.toString().padStart(2,'0')}`;
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Date
+  document.getElementById('mDate').textContent = new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+
+  // Tab switching
+  function switchTab(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    const tab = document.getElementById('tab-' + id);
+    if (tab) tab.classList.add('active');
+  }
+
+  // Stats filter
+  function filterDash(f, el) {
+    el.parentElement.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    const data = {
+      today: ['24,850','1,248','18'],
+      week:  ['1,42,300','1,248','118'],
+      month: ['5,80,000','1,248','476'],
+    }[f];
+    document.getElementById('m-sales').textContent = data[0];
+    document.getElementById('m-stock').textContent = data[1];
+    document.getElementById('m-orders').textContent = data[2];
+  }
+
+  // KOT action
+  let kotCount = 3;
+  function kotAction(id, action) {
+    const card = document.getElementById(id);
+    card.style.opacity = '0.3';
+    card.style.pointerEvents = 'none';
+    card.style.transform = action === 'accept' ? 'translateX(30px)' : 'translateX(-30px)';
+    card.style.transition = 'all 0.3s';
+    setTimeout(() => { card.style.display = 'none'; }, 300);
+    kotCount = Math.max(0, kotCount - 1);
+    document.getElementById('kotCountLabel').textContent = kotCount + ' awaiting preparation';
+    const dot = document.getElementById('kotTabDot');
+    if (kotCount === 0) dot.style.display = 'none';
+    showToast(action === 'accept' ? '✓ Order accepted! Start preparing.' : 'Order rejected.');
+  }
+
+  function setCatFilter(el) {
+    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function setOrderFilter(el) {
+    document.querySelectorAll('.orders-filter-row .filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function showProfile(section) {
+    const el = document.querySelector(`.page-scroll`);
+    showToast(`Editing ${section === 'info' ? 'Business Info' : 'Contact & Operations'}...`);
+  }
+
+  // Toast
+  function showToast(msg) {
+    const t = document.getElementById('mToast');
+    document.getElementById('mToastMsg').textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+</script>
+</body>
+</html>

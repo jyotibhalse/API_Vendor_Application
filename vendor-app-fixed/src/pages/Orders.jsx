@@ -14,6 +14,11 @@ import {
   XCircle,
 } from "lucide-react"
 import api from "../api/axios"
+import {
+  VendorFilterChips,
+  VendorHeroCard,
+  VendorSurfaceCard,
+} from "../components/layout/VendorPageScaffold"
 import { useOrderRealtime } from "../hooks/useOrderRealtime"
 
 const STATUS_CONFIG = {
@@ -69,10 +74,7 @@ const TIMELINE_STEPS = [
 ]
 
 const NEXT_ACTIONS = {
-  pending: [
-    { label: "Accept", next: "accepted", style: "blue" },
-    { label: "Reject", next: "rejected", style: "red" },
-  ],
+  pending: [{ label: "Reject", next: "rejected", style: "red" }],
   accepted: [
     { label: "Start Packing", next: "packing", style: "purple" },
     { label: "Reject", next: "rejected", style: "red" },
@@ -277,38 +279,21 @@ export default function Orders() {
 
   return (
     <div className="flex flex-col h-full bg-bg text-text animate-fadeUp">
-      <div
-        className="px-5 pt-4 pb-3 flex-shrink-0 flex items-center justify-between"
-        style={{ borderBottom: "1px solid rgb(var(--color-border))" }}
-      >
-        <div>
-          <div className="font-syne font-extrabold text-[22px] text-text">Orders</div>
-          <div className="text-[12px] text-text-muted">
-            {loading ? "Loading..." : `${total} order${total !== 1 ? "s" : ""}`}
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {pending > 0 && (
-            <div
-              className="px-[10px] py-[4px] rounded-full text-[11px] font-bold"
-              style={{ background: "rgba(244,166,35,0.15)", color: "#f4a623" }}
-            >
-              {pending} pending
-            </div>
-          )}
-          {active > 0 && (
-            <div
-              className="px-[10px] py-[4px] rounded-full text-[11px] font-bold"
-              style={{ background: "rgba(59,130,246,0.15)", color: "#3b82f6" }}
-            >
-              {active} active
-            </div>
-          )}
-        </div>
-      </div>
+      <div className="px-4 pt-4 flex-shrink-0 space-y-4">
+        <VendorHeroCard
+          eyebrow="Vendor Orders"
+          title="Track every order with the dashboard rhythm"
+          description="Search quickly, filter by status, and move orders through fulfillment without leaving the same visual system as your home dashboard."
+          meta={[
+            { label: "Visible Orders", value: loading ? "Loading..." : total, tone: "amber" },
+            { label: "Pending", value: pending, tone: "red" },
+            { label: "Active", value: active, tone: "blue" },
+            { label: "Filter", value: activeFilter, tone: "green" },
+          ]}
+        />
 
-      <div className="px-5 pt-3 pb-1 flex-shrink-0">
-        <div className="flex items-center gap-2 px-3 rounded-xl" style={SURFACE_STYLE}>
+        <VendorSurfaceCard>
+          <div className="flex items-center gap-2 px-3 rounded-xl bg-bg" style={SURFACE_STYLE}>
           <Search size={14} className="text-text-muted flex-shrink-0" />
           <input
             type="text"
@@ -322,27 +307,19 @@ export default function Orders() {
               <X size={13} className="text-text-muted hover:text-text" />
             </button>
           )}
-        </div>
+          </div>
+
+          <div className="mt-3">
+            <VendorFilterChips
+              items={STATUS_FILTERS}
+              activeItem={activeFilter}
+              onChange={handleFilterChange}
+            />
+          </div>
+        </VendorSurfaceCard>
       </div>
 
-      <div className="flex gap-[6px] px-5 py-2 overflow-x-auto flex-shrink-0">
-        {STATUS_FILTERS.map((filter) => (
-          <button
-            key={filter}
-            type="button"
-            onClick={() => handleFilterChange(filter)}
-            className={`px-[12px] py-[5px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-all ${
-              activeFilter === filter
-                ? "bg-accent text-on-accent border-accent"
-                : "bg-surface2 text-text-muted border-border"
-            }`}
-          >
-            {filter}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-5 pb-5">
+      <div className="flex-1 overflow-y-auto px-4 pb-5 pt-4">
         {loading ? (
           <div className="flex items-center justify-center mt-10 gap-2 text-[13px] text-text-muted">
             <Loader size={14} className="animate-spin" /> Loading orders...

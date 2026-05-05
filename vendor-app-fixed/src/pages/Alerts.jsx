@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { BarChart3, Flame, TriangleAlert } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../api/axios"
+import { VendorHeroCard } from "../components/layout/VendorPageScaffold"
 import { useAuth } from "../context/AuthContext"
 import { buildVendorAlerts } from "../utils/alerts"
 
@@ -109,12 +110,21 @@ export default function Alerts() {
 
   return (
     <div className="flex h-full flex-col bg-bg animate-fadeUp">
-      <div className="px-5 pb-4 pt-5">
-        <h1 className="font-syne text-[30px] font-extrabold leading-none text-text">Stock Alerts</h1>
-        <p className="mt-2 text-[12px] text-text-muted">{summaryText}</p>
+      <div className="px-4 pb-4 pt-4">
+        <VendorHeroCard
+          eyebrow="Vendor Alerts"
+          title="Stock alerts and demand signals"
+          description={summaryText}
+          meta={[
+            { label: "Low Stock", value: lowStockAlerts.length, tone: "red" },
+            { label: "Demand Signals", value: demandSignals.length, tone: "blue" },
+            { label: "Inventory Feed", value: inventoryLoaded ? "Live" : "Offline", tone: "amber" },
+            { label: "Orders Feed", value: ordersLoaded ? "Live" : "Offline", tone: "green" },
+          ]}
+        />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5">
+      <div className="flex-1 overflow-y-auto px-4 pb-5">
         <AlertSection
           title="Low Stock Alerts"
           subtitle="Move on the most urgent parts first."

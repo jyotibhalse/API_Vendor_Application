@@ -24,7 +24,13 @@ import {
   SectionCard,
   StatTile,
 } from "../admin/adminShared";
-import { formatCurrency, formatPercent } from "../admin/adminUtils";
+import {
+  clampNumberInput,
+  formatCurrency,
+  formatPercent,
+  MAX_COMMISSION_RATE,
+  MAX_PLATFORM_FEE,
+} from "../admin/adminUtils";
 import { useAdminLayoutContext } from "../admin/useAdminLayoutContext";
 
 export default function AdminPanel() {
@@ -44,6 +50,9 @@ export default function AdminPanel() {
 
   const summary = overview?.summary || {};
   const chart = overview?.chart || [];
+  const hasChartData = chart.some(
+    (item) => (item.revenue || 0) > 0 || (item.platform_earnings || 0) > 0,
+  );
   const topVendors = (overview?.top_vendors || []).filter(
     (vendorItem) => vendorItem.approval_status !== "rejected",
   );
@@ -164,13 +173,17 @@ export default function AdminPanel() {
             Revenue vs platform earnings
           </div>
           <div className="mt-1 text-[12px] text-text-muted">
-            Daily movement across the current time filter.
+            Always shows the last 7 days of marketplace activity.
           </div>
 
           <div className="mt-4 h-[220px] sm:mt-5 sm:h-[280px]">
             {loading ? (
               <div className="flex h-full items-center justify-center text-[12px] text-text-muted">
                 Loading analytics...
+              </div>
+            ) : !hasChartData ? (
+              <div className="flex h-full items-center justify-center text-[12px] text-text-muted">
+                No revenue recorded in the last 7 days.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -217,7 +230,8 @@ export default function AdminPanel() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid
-                    stroke="rgba(255,255,255,0.06)"
+                    stroke="rgb(var(--color-border))"
+                    strokeOpacity={0.45}
                     strokeDasharray="4 4"
                     vertical={false}
                   />
@@ -302,7 +316,10 @@ export default function AdminPanel() {
                   setSettingsForm((current) => ({
                     ...current,
                     default_commission_rate:
-                      parseFloat(event.target.value) || 0,
+                      clampNumberInput(event.target.value, {
+                        min: 0,
+                        max: MAX_COMMISSION_RATE,
+                      }) || 0,
                   }))
                 }
                 className="w-full rounded-[12px] bg-surface2 px-[14px] py-[11px] text-[13px] text-text outline-none"
@@ -322,7 +339,11 @@ export default function AdminPanel() {
                 onChange={(event) =>
                   setSettingsForm((current) => ({
                     ...current,
-                    platform_fee_flat: parseFloat(event.target.value) || 0,
+                    platform_fee_flat:
+                      clampNumberInput(event.target.value, {
+                        min: 0,
+                        max: MAX_PLATFORM_FEE,
+                      }) || 0,
                   }))
                 }
                 className="w-full rounded-[12px] bg-surface2 px-[14px] py-[11px] text-[13px] text-text outline-none"

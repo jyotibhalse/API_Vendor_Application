@@ -1,7 +1,13 @@
-import React, { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef } from "react"
 import { ChevronDown, ChevronUp, Pencil, Trash2, X, Search, Camera, ImagePlus } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 import api from "../api/axios"
+import {
+  VendorFilterChips,
+  VendorHeroCard,
+  VendorSurfaceCard,
+} from "../components/layout/VendorPageScaffold"
+import { MAX_IMAGE_SIZE_MB, validateImageFile } from "../utils/fileValidation"
 
 const HIGHLIGHT_DURATION_MS = 2600
 
@@ -53,6 +59,12 @@ function UploadThumb({ src, size = 48, rounded = 12, onFile, label = "" }) {
   const handlePick = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      alert(validation.message)
+      e.target.value = ""
+      return
+    }
     const reader = new FileReader()
     reader.onload = ev => { setPreview(ev.target.result); setErr(false) }
     reader.readAsDataURL(file)
@@ -195,10 +207,18 @@ export default function Inventory() {
       return null
     })
     .filter(Boolean)
+  const totalProducts = inventory.reduce((total, brand) => total + (brand.products?.length || 0), 0)
+  const totalVariants = inventory.reduce(
+    (total, brand) =>
+      total +
+      (brand.products || []).reduce(
+        (productTotal, product) => productTotal + (product.variants?.length || 0),
+        0,
+      ),
+    0,
+  )
 
   // track brand logo upload per brand_id
-  const [brandLogoFiles, setBrandLogoFiles] = useState({})
-
   const handleBrandLogoUpload = async (brandId, file) => {
     const fd = new FormData()
     fd.append("file", file)
@@ -207,7 +227,7 @@ export default function Inventory() {
         headers: { "Content-Type": "multipart/form-data" }
       })
       fetchInventory()
-    } catch (err) { alert("Failed to upload brand logo") }
+    } catch { alert("Failed to upload brand logo") }
   }
 
   useEffect(() => {
@@ -262,44 +282,44 @@ export default function Inventory() {
   return (
     <div className="flex flex-col h-full bg-bg animate-fadeUp">
 
-      {/* Header */}
-      <div className="px-5 pt-4 pb-3 flex-shrink-0 flex items-center justify-between"
-           style={{ borderBottom: "1px solid rgb(var(--color-border))" }}>
-        <div>
-          <div className="font-syne font-extrabold text-[22px] text-text">Inventory</div>
-          <div className="text-[12px] text-text-muted">{inventory.length} brands</div>
-        </div>
-      </div>
-
-      {/* Search bar */}
-      <div className="mx-5 mt-3 mb-0 flex items-center gap-[10px] px-[14px] py-[11px] rounded-[14px]"
-           style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}>
-        <Search size={16} className="text-text-muted" />
-        <input
-          type="text"
-          placeholder="Search brands, products, models..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="flex-1 bg-transparent outline-none text-text text-[13px] placeholder:text-text-muted"
+      <div className="px-4 pt-4 flex-shrink-0 space-y-4">
+        <VendorHeroCard
+          eyebrow="Vendor Inventory"
+          title="Parts, brands, and stock in one place"
+          description={`Keep every SKU organized with the same dashboard rhythm. Image uploads are limited to ${MAX_IMAGE_SIZE_MB} MB each.`}
+          meta={[
+            { label: "Brands", value: inventory.length, tone: "amber" },
+            { label: "Products", value: totalProducts, tone: "blue" },
+            { label: "Variants", value: totalVariants, tone: "green" },
+            { label: "Visible", value: filteredInventory.length, tone: "red" },
+          ]}
         />
-        {searchQuery && <X size={14} className="text-text-muted cursor-pointer" onClick={() => setSearchQuery("")} />}
-      </div>
 
-      {/* Category filter chips */}
-      <div className="flex gap-[6px] px-5 py-3 overflow-x-auto flex-shrink-0">
-        {brandNames.slice(0, 8).map(name => (
-          <button key={name} onClick={() => setActiveFilter(name)}
-            className={`px-[12px] py-[5px] rounded-full text-[11px] font-semibold border whitespace-nowrap transition-all
-              ${activeFilter === name
-                ? "bg-accent text-on-accent border-accent"
-                : "bg-surface2 text-text-muted border-border"}`}>
-            {name}
-          </button>
-        ))}
+        <VendorSurfaceCard>
+          <div className="flex items-center gap-[10px] rounded-[14px] bg-bg px-[14px] py-[11px]">
+            <Search size={16} className="text-text-muted" />
+            <input
+              type="text"
+              placeholder="Search brands, products, models..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent outline-none text-text text-[13px] placeholder:text-text-muted"
+            />
+            {searchQuery && <X size={14} className="text-text-muted cursor-pointer" onClick={() => setSearchQuery("")} />}
+          </div>
+
+          <div className="mt-3">
+            <VendorFilterChips
+              items={brandNames.slice(0, 8)}
+              activeItem={activeFilter}
+              onChange={setActiveFilter}
+            />
+          </div>
+        </VendorSurfaceCard>
       </div>
 
       {/* Inventory list */}
-      <div className="flex-1 overflow-y-auto px-5 pb-5 relative">
+      <div className="flex-1 overflow-y-auto px-4 pb-5 pt-4 relative">
         {filteredInventory.length === 0 ? (
           <div className="text-center mt-16">
             <div className="text-5xl mb-4">📦</div>
@@ -523,6 +543,12 @@ function BrandLogoUpload({ src, onFile }) {
   const handlePick = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const validation = validateImageFile(file)
+    if (!validation.valid) {
+      alert(validation.message)
+      e.target.value = ""
+      return
+    }
     const reader = new FileReader()
     reader.onload = ev => { setPreview(ev.target.result); setErr(false) }
     reader.readAsDataURL(file)

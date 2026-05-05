@@ -55,6 +55,7 @@ EMAIL_FROM = os.getenv("EMAIL_FROM", f"API Vendor <{EMAIL_USER}>")
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-env")
 DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@autoparts.local")
 DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD", "Admin@123")
+ADMIN_NOTIFICATION_EMAIL = os.getenv("ADMIN_NOTIFICATION_EMAIL", DEFAULT_ADMIN_EMAIL)
 DEFAULT_PLATFORM_COMMISSION_RATE = _get_float_env("DEFAULT_PLATFORM_COMMISSION_RATE", 8.0)
 DEFAULT_PLATFORM_FLAT_FEE = _get_float_env("DEFAULT_PLATFORM_FLAT_FEE", 0.0)
 LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES = _get_int_env("LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES", 60)
@@ -68,7 +69,7 @@ AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
 AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME", "")
 AWS_S3_BASE_URL = f"https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com" if AWS_BUCKET_NAME else ""
 # Upload Settings
-MAX_UPLOAD_SIZE_MB = _get_int_env("MAX_UPLOAD_SIZE_MB", 10)
+MAX_UPLOAD_SIZE_MB = _get_int_env("MAX_UPLOAD_SIZE_MB", 5)
 ALLOWED_FILE_TYPES = [ft.strip() for ft in os.getenv("ALLOWED_FILE_TYPES", "jpg,jpeg,png,pdf").split(",")]# Environment Control
 ENV = os.getenv("ENV", "development")
 USE_S3 = os.getenv("USE_S3", "false").lower() == "true"

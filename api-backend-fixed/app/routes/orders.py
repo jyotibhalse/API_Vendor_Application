@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 from typing import Optional
 
 from app.core.database import get_db
+from app.core.email_notifications import send_email, simple_email_body
 from app.core.order_serialization import get_order_payload, serialize_orders
 from app.core.realtime import order_realtime_hub
 from app.core.security import require_role
@@ -27,11 +28,55 @@ VALID_TRANSITIONS = {
     "rejected":         [],
 }
 
+STATUS_LABELS = {
+    "accepted": "accepted",
+    "packing": "packing",
+    "out_for_delivery": "out for delivery",
+    "delivered": "delivered",
+    "rejected": "rejected",
+}
+
+
+async def restore_order_stock(db: AsyncSession, order_id: int) -> None:
+    result = await db.execute(select(OrderItem).where(OrderItem.order_id == order_id))
+    items = result.scalars().all()
+
+    for item in items:
+        v_result = await db.execute(select(Variant).where(Variant.id == item.variant_id))
+        variant = v_result.scalars().first()
+        if variant:
+            variant.stock += item.quantity
+
+
+async def notify_customer_status_change(db: AsyncSession, order: Order) -> None:
+    if not order.customer_id:
+        return
+
+    customer_result = await db.execute(select(User).where(User.id == order.customer_id))
+    customer = customer_result.scalars().first()
+    if not customer or not customer.email:
+        return
+
+    vendor_result = await db.execute(select(User).where(User.id == order.vendor_id))
+    vendor = vendor_result.scalars().first()
+    vendor_name = vendor.shop_name or vendor.full_name or "the vendor" if vendor else "the vendor"
+    status_label = STATUS_LABELS.get(order.status, order.status.replace("_", " "))
+    message = (
+        f"Your order <strong>#{order.id}</strong> is now <strong>{status_label}</strong> "
+        f"by {vendor_name}."
+    )
+
+    send_email(
+        customer.email,
+        f"Order #{order.id} status updated",
+        simple_email_body("Order status updated", message),
+    )
+
 
 @router.post("/")
 async def create_order(
     variant_id: int,
-    quantity: int,
+    quantity: int = Query(gt=0),
     vehicle_number: Optional[str] = None,
     is_urgent: Optional[bool] = False,
     db: AsyncSession = Depends(get_db),
@@ -172,6 +217,8 @@ async def accept_order(
 
     order.status = "accepted"
     await db.commit()
+    await db.refresh(order)
+    await notify_customer_status_change(db, order)
 
     payload = await get_order_payload(db, order.id)
     if payload is not None:
@@ -200,8 +247,13 @@ async def reject_order(
     if order.status not in ("pending", "accepted"):
         raise HTTPException(status_code=400, detail=f"Cannot reject an order in '{order.status}' state")
 
+    if order.status == "accepted":
+        await restore_order_stock(db, order.id)
+
     order.status = "rejected"
     await db.commit()
+    await db.refresh(order)
+    await notify_customer_status_change(db, order)
 
     payload = await get_order_payload(db, order.id)
     if payload is not None:
@@ -241,8 +293,13 @@ async def update_order_status(
                    f"Allowed next states: {allowed}"
         )
 
+    if order.status == "accepted" and status == "rejected":
+        await restore_order_stock(db, order.id)
+
     order.status = status
     await db.commit()
+    await db.refresh(order)
+    await notify_customer_status_change(db, order)
 
     payload = await get_order_payload(db, order.id)
     if payload is not None:

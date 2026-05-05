@@ -1,17 +1,35 @@
 from datetime import datetime
+import re
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+PASSWORD_RULE_MESSAGE = (
+    "Password must be 6-15 characters and include at least one uppercase letter, "
+    "one number, and one special character."
+)
+PASSWORD_PATTERN = re.compile(r"^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,15}$")
+
+
+def validate_strong_password(value: str) -> str:
+    if not PASSWORD_PATTERN.match(value):
+        raise ValueError(PASSWORD_RULE_MESSAGE)
+    return value
 
 
 class UserCreate(BaseModel):
     email: str
-    password: str
+    password: str = Field(min_length=6, max_length=15)
     full_name: Optional[str] = None
     shop_name: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
     role: Literal["vendor", "customer"] = "vendor"
+
+    @field_validator("password")
+    @classmethod
+    def password_must_be_strong(cls, value: str) -> str:
+        return validate_strong_password(value)
 
 class UserLogin(BaseModel):
     email: str
@@ -43,7 +61,12 @@ class UserSettingsUpdate(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(min_length=1)
-    new_password: str = Field(min_length=6)
+    new_password: str = Field(min_length=6, max_length=15)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_must_be_strong(cls, value: str) -> str:
+        return validate_strong_password(value)
 
     @model_validator(mode="after")
     def validate_new_password(self):
@@ -64,7 +87,12 @@ class VerifyOTPRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     email: str
     otp: str = Field(min_length=6, max_length=6, pattern=r'^\d{6}$')
-    new_password: str = Field(min_length=6)
+    new_password: str = Field(min_length=6, max_length=15)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_must_be_strong(cls, value: str) -> str:
+        return validate_strong_password(value)
 
 
 class UserResponse(BaseModel):

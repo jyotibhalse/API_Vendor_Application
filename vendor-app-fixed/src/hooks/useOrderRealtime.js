@@ -17,6 +17,7 @@ export function useOrderRealtime({ onEvent, path = "/ws/orders", enabled = true 
   const [liveMode, setLiveMode] = useState(enabled ? "connecting" : "idle")
 
   const socketRef = useRef(null)
+  const connectWebSocketRef = useRef(null)
   const reconnectTimeoutRef = useRef(null)
   const pingIntervalRef = useRef(null)
 
@@ -54,7 +55,7 @@ export function useOrderRealtime({ onEvent, path = "/ws/orders", enabled = true 
     setLiveMode("fallback")
     reconnectTimeoutRef.current = setTimeout(() => {
       setLiveMode("connecting")
-      connectWebSocket()
+      connectWebSocketRef.current?.()
     }, WS_RECONNECT_DELAY_MS)
   })
 
@@ -110,6 +111,7 @@ export function useOrderRealtime({ onEvent, path = "/ws/orders", enabled = true 
       }
     }
   })
+  connectWebSocketRef.current = connectWebSocket
 
   useEffect(() => {
     if (!enabled) {

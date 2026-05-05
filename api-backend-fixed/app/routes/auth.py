@@ -1,9 +1,7 @@
 import json
 import logging
-import random
 import secrets
 import string
-import smtplib
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -11,11 +9,13 @@ from email.mime.text import MIMEText
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, ValidationError
+import redis.asyncio as redis_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.core.config import EMAIL_FROM, EMAIL_PASSWORD, EMAIL_USER
+from app.core.config import ADMIN_NOTIFICATION_EMAIL, EMAIL_FROM, EMAIL_PASSWORD, EMAIL_USER, REDIS_URL, SMTP_TIMEOUT
 from app.core.database import get_db
+from app.core.email_notifications import send_email, simple_email_body
 from app.core.security import create_access_token, get_current_user, hash_password, require_role, verify_password
 from app.models.user import User
 from app.schemas.user import (
@@ -38,11 +38,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 # ── In-memory OTP store: { email: { otp, expires_at } }
 # For production use Redis instead
 otp_store: dict = {}
+otp_redis = redis_asyncio.from_url(REDIS_URL, decode_responses=True) if REDIS_URL else None
+OTP_TTL_SECONDS = 10 * 60
+OTP_MAX_VERIFY_ATTEMPTS = 5
 
 # ── Email config — loaded from environment variables ──
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
-SMTP_TIMEOUT = 10  # Connection timeout in seconds to prevent hanging
 
 
 def parse_settings(raw_value: str | None, schema_cls: type[BaseModel]) -> dict:
@@ -110,6 +112,60 @@ def generate_otp() -> str:
     return "".join(secrets.choice(string.digits) for _ in range(6))
 
 
+def otp_key(email: str) -> str:
+    return f"password-reset-otp:{email.lower()}"
+
+
+async def save_otp_session(email: str, otp: str) -> None:
+    session = {
+        "otp": otp,
+        "verified": False,
+        "attempts": 0,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=OTP_TTL_SECONDS)).isoformat(),
+    }
+
+    if otp_redis is not None:
+        await otp_redis.setex(otp_key(email), OTP_TTL_SECONDS, json.dumps(session))
+        return
+
+    otp_store[email] = session
+
+
+async def get_otp_session(email: str) -> dict | None:
+    if otp_redis is not None:
+        raw_session = await otp_redis.get(otp_key(email))
+        return json.loads(raw_session) if raw_session else None
+
+    session = otp_store.get(email)
+    if not session:
+        return None
+
+    if datetime.now(timezone.utc) > datetime.fromisoformat(session["expires_at"]):
+        otp_store.pop(email, None)
+        return None
+
+    return session
+
+
+async def update_otp_session(email: str, session: dict) -> None:
+    expires_at = datetime.fromisoformat(session["expires_at"])
+    ttl_seconds = max(1, int((expires_at - datetime.now(timezone.utc)).total_seconds()))
+
+    if otp_redis is not None:
+        await otp_redis.setex(otp_key(email), ttl_seconds, json.dumps(session))
+        return
+
+    otp_store[email] = session
+
+
+async def delete_otp_session(email: str) -> None:
+    if otp_redis is not None:
+        await otp_redis.delete(otp_key(email))
+        return
+
+    otp_store.pop(email, None)
+
+
 def send_otp_email(to_email: str, otp: str, shop_name: str = ""):
     subject = "Your Password Reset OTP – API Vendor"
     body = f"""
@@ -146,10 +202,43 @@ def send_otp_email(to_email: str, otp: str, shop_name: str = ""):
             "Add them to your .env file (use a Gmail App Password)."
         )
 
+    import smtplib
+
     with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=SMTP_TIMEOUT) as server:
         server.starttls()
         server.login(EMAIL_USER, EMAIL_PASSWORD)
         server.sendmail(EMAIL_USER, to_email, msg.as_string())
+
+
+async def get_admin_notification_emails(db: AsyncSession) -> list[str]:
+    result = await db.execute(
+        select(User.email).where(User.role == "admin", User.is_active.is_(True))
+    )
+    emails = [email for email in result.scalars().all() if email]
+    if not emails and ADMIN_NOTIFICATION_EMAIL:
+        emails.append(ADMIN_NOTIFICATION_EMAIL)
+    return sorted(set(emails))
+
+
+async def notify_admin_vendor_registered(db: AsyncSession, vendor: User) -> None:
+    if vendor.role != "vendor":
+        return
+
+    subject = "New vendor registration pending approval"
+    message = (
+        f"A new vendor has registered and is waiting for approval.<br><br>"
+        f"<strong>Shop:</strong> {vendor.shop_name or 'Not provided'}<br>"
+        f"<strong>Name:</strong> {vendor.full_name or 'Not provided'}<br>"
+        f"<strong>Email:</strong> {vendor.email}<br>"
+        f"<strong>Phone:</strong> {vendor.phone or 'Not provided'}"
+    )
+
+    for email in await get_admin_notification_emails(db):
+        send_email(
+            email,
+            subject,
+            simple_email_body("Vendor approval needed", message, "Open the admin panel to approve or reject this vendor."),
+        )
 
 
 # ─────────────────────────────────────────────────────────
@@ -176,6 +265,9 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    await notify_admin_vendor_registered(db, new_user)
+
     return {
         "message": "User created successfully",
         "user": {
@@ -211,6 +303,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 @router.put("/profile")
 async def update_profile(
+    email: str = None,
     full_name: str = None,
     shop_name: str = None,
     phone: str = None,
@@ -218,12 +311,34 @@ async def update_profile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    email_changed = False
+    if email is not None:
+        next_email = email.strip().lower()
+        if not next_email:
+            raise HTTPException(status_code=400, detail="Email cannot be empty")
+        if next_email != current_user.email:
+            result = await db.execute(select(User).where(User.email == next_email))
+            if result.scalars().first():
+                raise HTTPException(status_code=400, detail="Email already registered")
+            current_user.email = next_email
+            email_changed = True
+
     if full_name  is not None: current_user.full_name  = full_name
     if shop_name  is not None: current_user.shop_name  = shop_name
     if phone      is not None: current_user.phone      = phone
     if address    is not None: current_user.address    = address
     await db.commit()
-    return {"message": "Profile updated"}
+    await db.refresh(current_user)
+
+    response = {
+        "message": "Profile updated",
+        "user": serialize_user(current_user),
+    }
+    if email_changed:
+        response["access_token"] = create_access_token(data={"sub": current_user.email})
+        response["token_type"] = "bearer"
+
+    return response
 
 
 # ─────────────────────────────────────────────────────────
@@ -281,16 +396,13 @@ async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Dep
         return {"message": "If this email exists, an OTP has been sent"}
 
     otp = generate_otp()
-    otp_store[email] = {
-        "otp": otp,
-        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10)
-    }
+    await save_otp_session(email, otp)
 
     try:
         send_otp_email(email, otp, shop_name=user.shop_name or "")
-    except Exception as e:
+    except Exception:
         # Remove OTP if email failed
-        otp_store.pop(email, None)
+        await delete_otp_session(email)
         logger.exception("Failed to send OTP email to user")
         raise HTTPException(status_code=500, detail="Failed to send email")
     return {"message": "OTP sent to your email"}
@@ -301,20 +413,23 @@ async def verify_otp(payload: VerifyOTPRequest):
     """Step 2 – Verify OTP is correct and not expired"""
     email = payload.email
     otp = payload.otp
-    record = otp_store.get(email)
+    record = await get_otp_session(email)
 
     if not record:
         raise HTTPException(status_code=400, detail="No OTP requested for this email")
 
-    if datetime.now(timezone.utc) > record["expires_at"]:
-        otp_store.pop(email, None)
-        raise HTTPException(status_code=400, detail="OTP has expired. Request a new one.")
+    if record.get("attempts", 0) >= OTP_MAX_VERIFY_ATTEMPTS:
+        await delete_otp_session(email)
+        raise HTTPException(status_code=429, detail="Too many incorrect OTP attempts. Request a new OTP.")
 
     if not secrets.compare_digest(record["otp"], otp):
+        record["attempts"] = record.get("attempts", 0) + 1
+        await update_otp_session(email, record)
         raise HTTPException(status_code=400, detail="Incorrect OTP")
 
     # Mark OTP as verified (don't delete yet — needed for reset step)
-    otp_store[email]["verified"] = True
+    record["verified"] = True
+    await update_otp_session(email, record)
 
     return {"message": "OTP verified successfully"}
 
@@ -325,17 +440,13 @@ async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depen
     email = payload.email
     otp = payload.otp
     new_password = payload.new_password
-    record = otp_store.get(email)
+    record = await get_otp_session(email)
 
     if not record:
         raise HTTPException(status_code=400, detail="No OTP session found. Start over.")
 
     if not record.get("verified"):
         raise HTTPException(status_code=400, detail="OTP not verified yet")
-
-    if datetime.now(timezone.utc) > record["expires_at"]:
-        otp_store.pop(email, None)
-        raise HTTPException(status_code=400, detail="OTP session expired. Start over.")
 
     if not secrets.compare_digest(record["otp"], otp):
         raise HTTPException(status_code=400, detail="Invalid OTP")
@@ -350,6 +461,6 @@ async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depen
     await db.commit()
 
     # Clean up OTP
-    otp_store.pop(email, None)
+    await delete_otp_session(email)
 
     return {"message": "Password reset successfully"}

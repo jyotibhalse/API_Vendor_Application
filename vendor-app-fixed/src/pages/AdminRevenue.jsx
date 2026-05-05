@@ -8,7 +8,13 @@ import {
   SectionCard,
   StatusPill,
 } from "../admin/adminShared";
-import { formatCurrency, formatDate, formatPercent } from "../admin/adminUtils";
+import {
+  clampNumberInput,
+  formatCurrency,
+  formatDate,
+  formatPercent,
+  MAX_COMMISSION_RATE,
+} from "../admin/adminUtils";
 import { useAdminLayoutContext } from "../admin/useAdminLayoutContext";
 
 export default function AdminRevenue() {
@@ -19,6 +25,7 @@ export default function AdminRevenue() {
     vendors,
     settingsForm,
     commissionDrafts,
+    commissionErrors,
     setCommissionDrafts,
     loading,
     busyKey,
@@ -212,16 +219,26 @@ export default function AdminRevenue() {
                         max="100"
                         step="0.1"
                         value={commissionDrafts[vendorItem.id] ?? ""}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const nextValue = clampNumberInput(event.target.value, {
+                            min: 0,
+                            max: MAX_COMMISSION_RATE,
+                          });
                           setCommissionDrafts((current) => ({
                             ...current,
-                            [vendorItem.id]: event.target.value,
-                          }))
-                        }
+                            [vendorItem.id]:
+                              nextValue === "" ? "" : String(nextValue),
+                          }));
+                        }}
                         placeholder="Blank = platform default"
                         className="w-full rounded-[12px] bg-bg px-[14px] py-[11px] text-[13px] text-text outline-none placeholder:text-text-faint"
                         style={{ border: "1px solid rgb(var(--color-border))" }}
                       />
+                      {commissionErrors[vendorItem.id] && (
+                        <div className="mt-2 text-[11px] text-red-400">
+                          {commissionErrors[vendorItem.id]}
+                        </div>
+                      )}
                     </div>
 
                     <button

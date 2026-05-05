@@ -11,6 +11,23 @@ export const INITIAL_SETTINGS = {
   platform_fee_flat: 0,
 };
 
+export const MAX_COMMISSION_RATE = 100;
+export const MAX_PLATFORM_FEE = 100000;
+
+export function clampNumberInput(rawValue, { min = 0, max } = {}) {
+  if (rawValue === "") {
+    return "";
+  }
+
+  const parsedValue = Number(rawValue);
+  if (!Number.isFinite(parsedValue)) {
+    return min;
+  }
+
+  const minBoundValue = Math.max(parsedValue, min);
+  return max == null ? minBoundValue : Math.min(minBoundValue, max);
+}
+
 export function formatCurrency(value) {
   const numValue = parseFloat(value);
   const safeValue = Number.isFinite(numValue) ? numValue : 0;

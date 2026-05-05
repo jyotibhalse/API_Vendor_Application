@@ -18,7 +18,7 @@ export default function VerifyOTP() {
   // Redirect if no email passed
   useEffect(() => {
     if (!email) navigate("/forgot-password");
-  }, [email]);
+  }, [email, navigate]);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -81,7 +81,7 @@ export default function VerifyOTP() {
       setOtp(["", "", "", "", "", ""]);
       setCountdown(60);
       inputRefs.current[0]?.focus();
-    } catch (err) {
+    } catch {
       setError("Failed to resend. Try again.");
     } finally {
       setResending(false);

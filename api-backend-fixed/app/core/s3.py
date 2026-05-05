@@ -3,6 +3,7 @@ import shutil
 import uuid
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 from fastapi import HTTPException, UploadFile
 
@@ -28,6 +29,8 @@ except ModuleNotFoundError:
 
     class NoCredentialsError(Exception):
         pass
+
+logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # S3 Client Initialization
@@ -152,12 +155,67 @@ def _save_locally(file: UploadFile) -> str:
     return f"/uploads/{filename}"
 
 
+def _get_local_upload_path(file_url: str) -> Optional[Path]:
+    if not file_url:
+        return None
+
+    parsed = urlparse(file_url)
+    path = parsed.path if parsed.scheme else file_url
+    if not path.startswith("/uploads/"):
+        return None
+
+    candidate = (UPLOAD_DIR / Path(path).name).resolve()
+    upload_root = UPLOAD_DIR.resolve()
+
+    if candidate.parent != upload_root:
+        return None
+
+    return candidate
+
+
+def _get_s3_key(file_url: str) -> Optional[str]:
+    if not file_url or not AWS_BUCKET_NAME:
+        return None
+
+    if AWS_S3_BASE_URL and file_url.startswith(f"{AWS_S3_BASE_URL}/"):
+        return file_url.removeprefix(f"{AWS_S3_BASE_URL}/")
+
+    parsed = urlparse(file_url)
+    if parsed.netloc.startswith(f"{AWS_BUCKET_NAME}.s3."):
+        return parsed.path.lstrip("/")
+
+    return None
+
+
+def delete_file_from_storage(file_url: Optional[str]) -> bool:
+    if not file_url:
+        return False
+
+    local_path = _get_local_upload_path(file_url)
+    if local_path:
+        try:
+            if local_path.exists():
+                local_path.unlink()
+            return True
+        except OSError as exc:
+            logger.warning("Failed to delete local upload %s: %s", local_path, exc)
+            return False
+
+    s3_key = _get_s3_key(file_url)
+    if not s3_key or not USE_S3:
+        return False
+
+    try:
+        _get_s3_client().delete_object(Bucket=AWS_BUCKET_NAME, Key=s3_key)
+        return True
+    except (BotoCoreError, NoCredentialsError, HTTPException) as exc:
+        logger.warning("Failed to delete S3 object %s: %s", s3_key, exc)
+        return False
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Optional: Pre-signed URL (NEXT LEVEL)
 # ─────────────────────────────────────────────────────────────────────────────
-
-logger = logging.getLogger(__name__)
-
 
 def generate_presigned_url(key: str, expires_in: int = 3600) -> Optional[str]:
     """

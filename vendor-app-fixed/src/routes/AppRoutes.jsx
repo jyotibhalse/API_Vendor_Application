@@ -11,6 +11,7 @@ import AdminApprovals from "../pages/AdminApprovals";
 import Alerts from "../pages/Alerts";
 import AdminLogin from "../pages/AdminLogin";
 import AdminPanel from "../pages/AdminPanel";
+import AdminProfile from "../pages/AdminProfile";
 import AdminRevenue from "../pages/AdminRevenue";
 import Dashboard from "../pages/Dashboard";
 import ForgotPassword from "../pages/Forgotpassword";
@@ -45,6 +46,7 @@ export default function AppRoutes() {
         <Route path="approvals" element={<AdminApprovals />} />
         <Route path="revenue" element={<AdminRevenue />} />
         <Route path="alerts" element={<AdminAlerts />} />
+        <Route path="profile" element={<AdminProfile />} />
       </Route>
 
       <Route

@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { BellRing, LogOut } from "lucide-react";
 import { Outlet, useNavigate } from "react-router-dom";
 import api from "../../api/axios";
-import { INITIAL_SETTINGS, PERIOD_MAP } from "../../admin/adminUtils";
+import {
+  INITIAL_SETTINGS,
+  MAX_COMMISSION_RATE,
+  MAX_PLATFORM_FEE,
+  PERIOD_MAP,
+} from "../../admin/adminUtils";
 import { useAuth } from "../../context/AuthContext";
 import AppTopHeader from "./AppTopHeader";
 import BottomTab from "./BottomTab";
@@ -16,6 +21,7 @@ const ADMIN_TABS = [
     badgeKey: "approvals",
   },
   { to: "/admin/revenue", icon: "💰", label: "Revenue" },
+  { to: "/admin/profile", icon: "👤", label: "Profile" },
 ];
 
 export default function AdminLayout() {
@@ -147,9 +153,9 @@ export default function AdminLayout() {
         const trimmed = String(rawValue).trim();
         if (trimmed !== "") {
           const parsed = parseFloat(trimmed);
-          if (!isFinite(parsed) || parsed < 0) {
+          if (!isFinite(parsed) || parsed < 0 || parsed > MAX_COMMISSION_RATE) {
             setCommissionErrors({
-              [vendorId]: "Commission rate must be a valid number >= 0",
+              [vendorId]: `Commission rate must be between 0 and ${MAX_COMMISSION_RATE}`,
             });
             setBusyKey("");
             return;
@@ -181,16 +187,20 @@ export default function AdminLayout() {
     try {
       // Validate commission rate
       const commissionRate = parseFloat(settingsForm.default_commission_rate);
-      if (!isFinite(commissionRate) || commissionRate < 0) {
-        setError("Default commission rate must be a valid number >= 0");
+      if (
+        !isFinite(commissionRate) ||
+        commissionRate < 0 ||
+        commissionRate > MAX_COMMISSION_RATE
+      ) {
+        setError(`Default commission rate must be between 0 and ${MAX_COMMISSION_RATE}`);
         setSettingsSaving(false);
         return;
       }
 
       // Validate platform fee
       const platformFee = parseFloat(settingsForm.platform_fee_flat);
-      if (!isFinite(platformFee) || platformFee < 0) {
-        setError("Platform fee must be a valid number >= 0");
+      if (!isFinite(platformFee) || platformFee < 0 || platformFee > MAX_PLATFORM_FEE) {
+        setError(`Platform fee must be between 0 and ${MAX_PLATFORM_FEE}`);
         setSettingsSaving(false);
         return;
       }

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../api/axios";
 import PasswordField from "../components/ui/PasswordField";
+import { PASSWORD_POLICY_TEXT, validatePasswordPolicy } from "../utils/passwordPolicy";
 
 export default function ResetPassword() {
   const timerRef = useRef(null);
@@ -28,8 +29,9 @@ export default function ResetPassword() {
     e.preventDefault();
     setError("");
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+    const passwordError = validatePasswordPolicy(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
     if (password !== confirm) {
@@ -131,6 +133,7 @@ export default function ResetPassword() {
               required
               autoComplete="new-password"
             />
+            <p className="text-[10px] text-text-muted mt-1">{PASSWORD_POLICY_TEXT}</p>
           </div>
 
           <div>

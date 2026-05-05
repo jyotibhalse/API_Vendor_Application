@@ -85,6 +85,11 @@ async def get_customer_inventory(
     result = await db.execute(
         select(Brand, User)
         .join(User, Brand.vendor_id == User.id)
+        .where(
+            User.role == "vendor",
+            User.is_active.is_(True),
+            User.approval_status == "approved",
+        )
         .options(selectinload(Brand.products).selectinload(Product.variants))
         .order_by(User.shop_name, Brand.name)
     )
@@ -123,6 +128,17 @@ async def create_customer_order(
     brand = brand_result.scalars().first()
     if not brand:
         raise HTTPException(status_code=404, detail="Brand not found")
+
+    vendor_result = await db.execute(
+        select(User).where(
+            User.id == brand.vendor_id,
+            User.role == "vendor",
+            User.is_active.is_(True),
+            User.approval_status == "approved",
+        )
+    )
+    if not vendor_result.scalars().first():
+        raise HTTPException(status_code=403, detail="Vendor is not approved for customer orders")
 
     if data.quantity > variant.stock:
         raise HTTPException(status_code=400, detail="Requested quantity exceeds current stock")

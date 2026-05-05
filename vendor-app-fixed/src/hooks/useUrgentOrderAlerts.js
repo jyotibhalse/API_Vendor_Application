@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 
 function canPlayOrderAlerts(user, enabled) {
@@ -21,7 +21,7 @@ export function useUrgentOrderAlerts({ enabled = true } = {}) {
   const vibrationEnabled =
     alertsEnabled && user?.notification_settings?.vibration_enabled !== false;
 
-  const triggerUrgentAlert = useEffectEvent((count = 1) => {
+  const triggerUrgentAlert = useCallback((count = 1) => {
     if (
       vibrationEnabled &&
       typeof navigator !== "undefined" &&
@@ -29,7 +29,7 @@ export function useUrgentOrderAlerts({ enabled = true } = {}) {
     ) {
       try {
         navigator.vibrate([220, 120, 220]);
-      } catch (error) {
+      } catch {
         // Vibration API error; platform may not support vibration.
         // Continue with audio alerts.
       }
@@ -80,17 +80,17 @@ export function useUrgentOrderAlerts({ enabled = true } = {}) {
     } catch {
       // Ignore browser autoplay restrictions and keep the UI responsive.
     }
-  });
+  }, [soundEnabled, vibrationEnabled]);
 
-  const markOrdersSeen = useEffectEvent((orders = []) => {
+  const markOrdersSeen = useCallback((orders = []) => {
     orders.forEach((order) => {
       if (order?.id) {
         seenOrderIdsRef.current.add(order.id);
       }
     });
-  });
+  }, []);
 
-  const notifyForOrders = useEffectEvent((orders = []) => {
+  const notifyForOrders = useCallback((orders = []) => {
     const newUrgentOrders = orders.filter(
       (order) =>
         order?.id && order.is_urgent && !seenOrderIdsRef.current.has(order.id),
@@ -103,9 +103,9 @@ export function useUrgentOrderAlerts({ enabled = true } = {}) {
     }
 
     return newUrgentOrders.length;
-  });
+  }, [markOrdersSeen, triggerUrgentAlert]);
 
-  const notifyForEvent = useEffectEvent((message) => {
+  const notifyForEvent = useCallback((message) => {
     const order = message?.order;
     if (!order?.id) {
       return false;
@@ -124,7 +124,7 @@ export function useUrgentOrderAlerts({ enabled = true } = {}) {
     }
 
     return shouldAlert;
-  });
+  }, [triggerUrgentAlert]);
 
   useEffect(() => {
     return () => {

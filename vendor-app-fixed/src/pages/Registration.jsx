@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import api from "../api/axios"
 import PasswordField from "../components/ui/PasswordField"
+import { PASSWORD_POLICY_TEXT, validatePasswordPolicy } from "../utils/passwordPolicy"
 
 const ROLE_META = {
   vendor: {
@@ -44,7 +45,7 @@ const FIELD_META = {
   },
   password: {
     label: "Password",
-    placeholder: "Min 8 characters",
+    placeholder: "Example: Parts@1",
     type: "password",
   },
 }
@@ -75,6 +76,13 @@ export default function Registration() {
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError("")
+
+    const passwordError = validatePasswordPolicy(form.password)
+    if (passwordError) {
+      setError(passwordError)
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -172,13 +180,16 @@ export default function Registration() {
                   }}
                 />
               ) : meta.type === "password" ? (
-                <PasswordField
-                  placeholder={meta.placeholder}
-                  value={form[field]}
-                  onChange={(event) => handleChange(field, event.target.value)}
-                  required={isRequired}
-                  autoComplete="new-password"
-                />
+                <>
+                  <PasswordField
+                    placeholder={meta.placeholder}
+                    value={form[field]}
+                    onChange={(event) => handleChange(field, event.target.value)}
+                    required={isRequired}
+                    autoComplete="new-password"
+                  />
+                  <p className="text-[10px] text-text-muted mt-1">{PASSWORD_POLICY_TEXT}</p>
+                </>
               ) : (
                 <input
                   type={meta.type}

@@ -1,6 +1,7 @@
 import { MoonStar, SunMedium } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import apiLogo from "../../assets/API_Logo.png"
+import apiLogoLight from "../../assets/API_Logo_light.png"
 import { useTheme } from "../../context/ThemeContext"
 
 const INACTIVE_ACTION_STYLE = {
@@ -81,10 +82,13 @@ function ThemeToggleButton() {
 }
 
 export default function AppTopHeader({ homeTo = "/", actions = [] }) {
+  const { theme } = useTheme()
+  const logoSrc = theme === "light" ? apiLogoLight : apiLogo
+
   return (
     <div className="flex items-center justify-between border-b border-border bg-bg px-5 py-3 transition-colors duration-300">
       <NavLink to={homeTo} className="flex items-center" aria-label="Auto Parts Ind home">
-        <img src={apiLogo} alt="Auto Parts Ind" className="h-[38px] w-auto object-contain" />
+        <img src={logoSrc} alt="Auto Parts Ind" className="h-[38px] w-auto object-contain" />
       </NavLink>
 
       <div className="flex items-center gap-2.5">

@@ -27,7 +27,7 @@ function persistUser(user) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => readStoredUser())
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => Boolean(sessionStorage.getItem("token")))
 
   const commitSession = (payload, fallbackUser = null) => {
     const nextUser = payload.user ?? fallbackUser
@@ -42,7 +42,6 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = sessionStorage.getItem("token")
     if (!token) {
-      setLoading(false)
       return
     }
 
@@ -117,6 +116,20 @@ export function AuthProvider({ children }) {
     return response.data
   }
 
+  const updateSession = (payload) => {
+    if (payload.access_token) {
+      sessionStorage.setItem("token", payload.access_token)
+    }
+
+    if (payload.user) {
+      persistUser(payload.user)
+      setUser(payload.user)
+      return payload.user
+    }
+
+    return user
+  }
+
   const logout = () => {
     sessionStorage.removeItem("token")
     sessionStorage.removeItem("user")
@@ -124,7 +137,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, loginAdmin, logout, loading, refreshUser }}>
+    <AuthContext.Provider value={{ user, login, loginAdmin, logout, loading, refreshUser, updateSession }}>
       {children}
     </AuthContext.Provider>
   )

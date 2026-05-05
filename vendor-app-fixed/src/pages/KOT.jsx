@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react"
 import { Mail, MapPin, Phone, UserRound } from "lucide-react"
 import api from "../api/axios"
+import { VendorHeroCard } from "../components/layout/VendorPageScaffold"
 import { useUrgentOrderAlerts } from "../hooks/useUrgentOrderAlerts"
 
 const POLL_INTERVAL_MS = 15000
@@ -13,6 +14,7 @@ export default function KOT() {
   const [liveMode, setLiveMode] = useState("connecting")
 
   const socketRef = useRef(null)
+  const connectWebSocketRef = useRef(null)
   const reconnectTimeoutRef = useRef(null)
   const pollIntervalRef = useRef(null)
   const pingIntervalRef = useRef(null)
@@ -98,7 +100,7 @@ export default function KOT() {
     setLiveMode("fallback")
     reconnectTimeoutRef.current = setTimeout(() => {
       setLiveMode("connecting")
-      connectWebSocket()
+      connectWebSocketRef.current?.()
     }, WS_RECONNECT_DELAY_MS)
   })
 
@@ -147,6 +149,7 @@ export default function KOT() {
       scheduleReconnect()
     }
   })
+  connectWebSocketRef.current = connectWebSocket
 
   useEffect(() => {
     fetchPendingOrders({ allowAlert: false })
@@ -184,40 +187,32 @@ export default function KOT() {
 
   return (
     <div className="flex flex-col h-full bg-bg animate-fadeUp">
-      <div className="px-5 pt-4 pb-3 flex-shrink-0">
-        <div className="font-syne font-extrabold text-[22px] text-text">KOT Orders</div>
-        <div className="flex flex-wrap items-center gap-2 mt-[4px]">
-          {orders.length > 0 ? (
-            <div
-              className="inline-flex items-center gap-[6px] px-[10px] py-[4px] rounded-full text-[11px] text-red-400 font-bold"
-              style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}
-            >
-              <span className="w-[6px] h-[6px] rounded-full bg-red-500 animate-blink inline-block" />
-              {orders.length} awaiting preparation
-            </div>
-          ) : (
-            <div
-              className="inline-flex items-center gap-[6px] px-[10px] py-[4px] rounded-full text-[11px] text-green-400 font-bold"
-              style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}
-            >
-              All clear - no pending orders
-            </div>
-          )}
-          <div
-            className={`inline-flex items-center gap-[6px] px-[10px] py-[4px] rounded-full text-[11px] font-bold ${
-              liveMode === "live" ? "text-blue-400" : "text-amber-300"
-            }`}
-            style={{
-              background: liveMode === "live" ? "rgba(59,130,246,0.12)" : "rgba(245,158,11,0.12)",
-              border: liveMode === "live" ? "1px solid rgba(59,130,246,0.2)" : "1px solid rgba(245,158,11,0.2)",
-            }}
-          >
-            {liveMode === "live" ? "Live updates on" : liveMode === "connecting" ? "Connecting live sync" : "Polling fallback"}
-          </div>
-        </div>
+      <div className="px-4 pt-4 pb-4 flex-shrink-0">
+        <VendorHeroCard
+          eyebrow="KOT Queue"
+          title="Kitchen order tickets in real time"
+          description="Pending orders stay front and center, with live sync status visible in the same dashboard language as the rest of the vendor app."
+          meta={[
+            {
+              label: "Awaiting Prep",
+              value: orders.length,
+              tone: orders.length > 0 ? "red" : "green",
+            },
+            {
+              label: "Live Mode",
+              value:
+                liveMode === "live"
+                  ? "Live updates"
+                  : liveMode === "connecting"
+                    ? "Connecting"
+                    : "Polling fallback",
+              tone: liveMode === "live" ? "blue" : "amber",
+            },
+          ]}
+        />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-5">
+      <div className="flex-1 overflow-y-auto px-4 pb-5">
         {loading ? (
           <div className="text-[13px] text-text-muted text-center mt-10">Loading orders...</div>
         ) : orders.length === 0 ? (

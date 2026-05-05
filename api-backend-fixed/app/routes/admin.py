@@ -1,10 +1,14 @@
+import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.database import get_db
+from app.core.config import BASE_DIR
+from app.core.email_notifications import send_email, simple_email_body
 from app.core.security import create_access_token, require_role, verify_password
 from app.models.order import Order
 from app.models.platform_setting import PlatformSetting
@@ -19,6 +23,15 @@ from app.schemas.admin import (
 router = APIRouter(prefix="/admin", tags=["Admin"])
 admin_only = require_role("admin")
 BILLABLE_ORDER_STATUSES = {"delivered"}
+audit_logger = logging.getLogger("admin_audit")
+
+if not audit_logger.handlers:
+    audit_dir = Path(BASE_DIR) / "logs"
+    audit_dir.mkdir(exist_ok=True)
+    audit_handler = logging.FileHandler(audit_dir / "admin_audit.log")
+    audit_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    audit_logger.addHandler(audit_handler)
+    audit_logger.setLevel(logging.INFO)
 
 
 def to_utc(value: datetime | None) -> datetime | None:
@@ -214,6 +227,8 @@ async def get_admin_overview(
 ):
     settings = await get_platform_settings(db)
     period_start = get_period_start(period)
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    chart_period_start = today - timedelta(days=6)
 
     vendors_result = await db.execute(
         select(User).where(User.role == "vendor").order_by(User.id.desc())
@@ -224,16 +239,20 @@ async def get_admin_overview(
         select(Order).where(Order.created_at >= period_start).order_by(Order.created_at.desc(), Order.id.desc())
     )
     orders = orders_result.scalars().all()
+    chart_orders_result = await db.execute(
+        select(Order).where(Order.created_at >= chart_period_start).order_by(Order.created_at.desc(), Order.id.desc())
+    )
+    chart_orders = chart_orders_result.scalars().all()
 
     vendor_items, summary = build_vendor_metrics(vendors, orders, settings)
+    vendor_lookup = {item["id"]: item for item in vendor_items}
 
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     chart = []
     for index in range(6, -1, -1):
         day_start = today - timedelta(days=index)
         day_end = day_start + timedelta(days=1)
         day_orders = [
-            order for order in orders
+            order for order in chart_orders
             if (order_dt := to_utc(order.created_at)) and day_start <= order_dt < day_end
         ]
         day_revenue = sum(
@@ -245,7 +264,7 @@ async def get_admin_overview(
         for order in day_orders:
             if not is_billable_order(order):
                 continue
-            vendor = next((item for item in vendor_items if item["id"] == order.vendor_id), None)
+            vendor = vendor_lookup.get(order.vendor_id)
             if vendor is None:
                 continue
             day_platform += (float(order.total_amount or 0.0) * vendor["effective_commission_rate"] / 100) + settings.platform_fee_flat
@@ -316,7 +335,7 @@ async def update_vendor_approval(
     vendor_id: int,
     payload: VendorApprovalUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(admin_only),
+    current_admin: User = Depends(admin_only),
 ):
     result = await db.execute(
         select(User).where(User.id == vendor_id, User.role == "vendor")
@@ -332,6 +351,29 @@ async def update_vendor_approval(
 
     await db.commit()
     await db.refresh(vendor)
+
+    audit_logger.info(
+        "admin_id=%s admin_email=%s action=vendor_approval vendor_id=%s status=%s notes=%r",
+        current_admin.id,
+        current_admin.email,
+        vendor.id,
+        payload.status,
+        payload.notes,
+    )
+
+    if vendor.email:
+        decision = "approved" if payload.status == "approved" else "rejected"
+        note = f"<br><br><strong>Admin note:</strong> {payload.notes}" if payload.notes else ""
+        message = (
+            f"Your vendor account for <strong>{vendor.shop_name or vendor.full_name or vendor.email}</strong> "
+            f"has been {decision}.{note}"
+        )
+        cta = "You can now sign in to the vendor app." if payload.status == "approved" else "Contact support if you need help."
+        send_email(
+            vendor.email,
+            f"Vendor account {decision}",
+            simple_email_body(f"Vendor account {decision}", message, cta),
+        )
 
     return {
         "message": f"Vendor {payload.status} successfully",

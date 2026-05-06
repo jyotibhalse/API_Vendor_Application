@@ -1,9 +1,13 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy import CheckConstraint, Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 class Variant(Base):
     __tablename__ = "variants"
+    __table_args__ = (
+        CheckConstraint("price > 0", name="ck_variants_price_positive"),
+        CheckConstraint("stock >= 0", name="ck_variants_stock_non_negative"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
 

@@ -203,7 +203,7 @@ export default function AdminApprovals() {
                         [vendorItem.id]: event.target.value,
                       }))
                     }
-                    placeholder="Add optional approval or rejection notes"
+                    placeholder="Add approval notes or the required rejection reason"
                     className="w-full resize-none rounded-[14px] bg-bg px-4 py-3 text-[13px] text-text outline-none placeholder:text-text-faint"
                     style={{ border: "1px solid rgb(var(--color-border))" }}
                   />

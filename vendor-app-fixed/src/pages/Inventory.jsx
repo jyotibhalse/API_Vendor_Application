@@ -11,6 +11,14 @@ import { MAX_IMAGE_SIZE_MB, validateImageFile } from "../utils/fileValidation"
 
 const HIGHLIGHT_DURATION_MS = 2600
 
+function normalizeNonNegativeNumber(rawValue, { integer = false, min = 0 } = {}) {
+  if (rawValue === "") return ""
+  const parsed = integer ? parseInt(rawValue, 10) : Number(rawValue)
+  if (!Number.isFinite(parsed)) return ""
+  const safeValue = Math.max(parsed, min)
+  return integer ? String(Math.floor(safeValue)) : String(safeValue)
+}
+
 function findVariantContext(inventory, targetVariantId) {
   for (const brand of inventory) {
     for (const product of brand.products || []) {
@@ -139,10 +147,21 @@ export default function Inventory() {
 
   const handleAddProduct = async () => {
     try {
+      const price = Number(formData.price)
+      const stock = Number(formData.stock)
+      if (!Number.isFinite(price) || price <= 0) {
+        alert("Price must be greater than 0")
+        return
+      }
+      if (!Number.isInteger(stock) || stock < 0) {
+        alert("Stock must be 0 or higher")
+        return
+      }
+
       const res = await api.post("/inventory/full", {
         ...formData,
-        price: Number(formData.price),
-        stock: Number(formData.stock),
+        price,
+        stock,
       })
       // Upload product image if picked
       if (newProductImgFile && res.data.product_id) {
@@ -161,6 +180,17 @@ export default function Inventory() {
 
   const handleUpdateVariant = async () => {
     try {
+      const price = Number(editForm.price)
+      const stock = Number(editForm.stock)
+      if (!Number.isFinite(price) || price <= 0) {
+        alert("Price must be greater than 0")
+        return
+      }
+      if (!Number.isInteger(stock) || stock < 0) {
+        alert("Stock must be 0 or higher")
+        return
+      }
+
       await api.put(`/inventory/variant/${editVariant.id}?stock=${editForm.stock}&price=${editForm.price}`)
       // Upload variant image if picked
       if (editVariantImgFile) {
@@ -458,16 +488,26 @@ export default function Inventory() {
               { label: "Product Name",  key: "product_name" },
               { label: "Description",   key: "description" },
               { label: "Vehicle Model", key: "vehicle_model" },
-              { label: "Price (₹)",     key: "price" },
-              { label: "Stock",         key: "stock" },
+              { label: "Price (₹)",     key: "price", type: "number", min: "0.01", step: "0.01" },
+              { label: "Stock",         key: "stock", type: "number", min: "0", step: "1" },
             ].map(f => (
               <div key={f.key}>
                 <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[4px]">{f.label}</label>
                 <input
-                  type="text"
+                  type={f.type || "text"}
+                  min={f.min}
+                  step={f.step}
                   placeholder={f.label}
                   value={formData[f.key]}
-                  onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
+                  onChange={e => {
+                    const nextValue = f.type === "number"
+                      ? normalizeNonNegativeNumber(e.target.value, {
+                          integer: f.key === "stock",
+                          min: f.key === "price" ? 0.01 : 0,
+                        })
+                      : e.target.value
+                    setFormData({ ...formData, [f.key]: nextValue })
+                  }}
                   className="w-full bg-surface2 text-text text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
                   style={{ border: "1px solid rgb(var(--color-border))" }}
                   onFocus={e => e.target.style.borderColor = "#f4a623"}
@@ -510,8 +550,16 @@ export default function Inventory() {
                 <label className="block text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[4px]">{f.label}</label>
                 <input
                   type="number"
+                  min={f.key === "price" ? "0.01" : "0"}
+                  step={f.key === "price" ? "0.01" : "1"}
                   value={editForm[f.key]}
-                  onChange={e => setEditForm({ ...editForm, [f.key]: e.target.value })}
+                  onChange={e => setEditForm({
+                    ...editForm,
+                    [f.key]: normalizeNonNegativeNumber(e.target.value, {
+                      integer: f.key === "stock",
+                      min: f.key === "price" ? 0.01 : 0,
+                    }),
+                  })}
                   className="w-full bg-surface2 text-text text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
                   style={{ border: "1px solid rgb(var(--color-border))" }}
                   onFocus={e => e.target.style.borderColor = "#f4a623"}

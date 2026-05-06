@@ -123,6 +123,11 @@ export default function AdminLayout() {
     setNotice("");
 
     try {
+      if (status === "rejected" && !notesDrafts[vendorId]?.trim()) {
+        setError("Add a rejection reason before rejecting this vendor.");
+        return;
+      }
+
       await api.patch(`/admin/vendors/${vendorId}/approval`, {
         status,
         notes: notesDrafts[vendorId]?.trim() || null,

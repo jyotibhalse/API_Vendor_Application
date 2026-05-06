@@ -12,6 +12,8 @@ from app.core.realtime import order_realtime_hub
 from app.core.security import require_role
 from app.models.order import Order
 from app.models.order_item import OrderItem
+from app.models.brand import Brand
+from app.models.product import Product
 from app.models.variant import Variant
 from app.models.user import User
 
@@ -42,10 +44,33 @@ async def restore_order_stock(db: AsyncSession, order_id: int) -> None:
     items = result.scalars().all()
 
     for item in items:
-        v_result = await db.execute(select(Variant).where(Variant.id == item.variant_id))
+        v_result = await db.execute(
+            select(Variant)
+            .where(Variant.id == item.variant_id)
+            .with_for_update()
+        )
         variant = v_result.scalars().first()
         if variant:
             variant.stock += item.quantity
+
+
+async def get_vendor_owned_variant(
+    db: AsyncSession,
+    variant_id: int,
+    vendor_id: int,
+    lock_for_update: bool = False,
+) -> Variant | None:
+    query = (
+        select(Variant)
+        .join(Product, Variant.product_id == Product.id)
+        .join(Brand, Product.brand_id == Brand.id)
+        .where(Variant.id == variant_id, Brand.vendor_id == vendor_id)
+    )
+    if lock_for_update:
+        query = query.with_for_update()
+
+    result = await db.execute(query)
+    return result.scalars().first()
 
 
 async def notify_customer_status_change(db: AsyncSession, order: Order) -> None:
@@ -82,8 +107,7 @@ async def create_order(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(vendor_only),
 ):
-    result = await db.execute(select(Variant).where(Variant.id == variant_id))
-    variant = result.scalars().first()
+    variant = await get_vendor_owned_variant(db, variant_id, current_user.id)
 
     if not variant:
         raise HTTPException(status_code=404, detail="Variant not found")
@@ -207,13 +231,19 @@ async def accept_order(
     items = result.scalars().all()
 
     for item in items:
-        v_result = await db.execute(select(Variant).where(Variant.id == item.variant_id))
-        variant = v_result.scalars().first()
+        variant = await get_vendor_owned_variant(
+            db,
+            item.variant_id,
+            current_user.id,
+            lock_for_update=True,
+        )
+        if variant is None:
+            raise HTTPException(status_code=404, detail=f"Variant {item.variant_id} not found")
 
-        if variant.stock < item.quantity:
-            raise HTTPException(status_code=400, detail=f"Insufficient stock for variant {variant.id}")
-
-        variant.stock -= item.quantity
+        if order.customer_id is None:
+            if variant.stock < item.quantity:
+                raise HTTPException(status_code=400, detail=f"Insufficient stock for variant {variant.id}")
+            variant.stock -= item.quantity
 
     order.status = "accepted"
     await db.commit()
@@ -247,7 +277,7 @@ async def reject_order(
     if order.status not in ("pending", "accepted"):
         raise HTTPException(status_code=400, detail=f"Cannot reject an order in '{order.status}' state")
 
-    if order.status == "accepted":
+    if order.status == "accepted" or order.customer_id is not None:
         await restore_order_stock(db, order.id)
 
     order.status = "rejected"
@@ -293,7 +323,7 @@ async def update_order_status(
                    f"Allowed next states: {allowed}"
         )
 
-    if order.status == "accepted" and status == "rejected":
+    if status == "rejected" and (order.status == "accepted" or order.customer_id is not None):
         await restore_order_stock(db, order.id)
 
     order.status = status

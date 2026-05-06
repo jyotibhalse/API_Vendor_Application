@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AdminLoginRequest(BaseModel):
@@ -11,6 +11,14 @@ class AdminLoginRequest(BaseModel):
 class VendorApprovalUpdate(BaseModel):
     status: Literal["approved", "rejected"]
     notes: Optional[str] = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def require_rejection_reason(self):
+        if self.status == "rejected" and not (self.notes or "").strip():
+            raise ValueError("A rejection reason is required when rejecting a vendor.")
+        if self.notes is not None:
+            self.notes = self.notes.strip() or None
+        return self
 
 
 class VendorCommissionUpdate(BaseModel):

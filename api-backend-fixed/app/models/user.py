@@ -1,9 +1,15 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.sql import func
 from app.core.database import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "commission_rate IS NULL OR (commission_rate >= 0 AND commission_rate <= 100)",
+            name="ck_users_commission_rate_range",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)

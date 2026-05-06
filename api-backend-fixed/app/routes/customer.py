@@ -114,7 +114,11 @@ async def create_customer_order(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(customer_only),
 ):
-    variant_result = await db.execute(select(Variant).where(Variant.id == data.variant_id))
+    variant_result = await db.execute(
+        select(Variant)
+        .where(Variant.id == data.variant_id)
+        .with_for_update()
+    )
     variant = variant_result.scalars().first()
     if not variant:
         raise HTTPException(status_code=404, detail="Variant not found")
@@ -144,6 +148,8 @@ async def create_customer_order(
         raise HTTPException(status_code=400, detail="Requested quantity exceeds current stock")
 
     try:
+        variant.stock -= data.quantity
+
         order = Order(
             vendor_id=brand.vendor_id,
             customer_id=current_user.id,

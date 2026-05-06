@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
+from html import escape
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -363,9 +364,10 @@ async def update_vendor_approval(
 
     if vendor.email:
         decision = "approved" if payload.status == "approved" else "rejected"
-        note = f"<br><br><strong>Admin note:</strong> {payload.notes}" if payload.notes else ""
+        note = f"<br><br><strong>Admin note:</strong> {escape(payload.notes)}" if payload.notes else ""
+        vendor_label = escape(vendor.shop_name or vendor.full_name or vendor.email)
         message = (
-            f"Your vendor account for <strong>{vendor.shop_name or vendor.full_name or vendor.email}</strong> "
+            f"Your vendor account for <strong>{vendor_label}</strong> "
             f"has been {decision}.{note}"
         )
         cta = "You can now sign in to the vendor app." if payload.status == "approved" else "Contact support if you need help."

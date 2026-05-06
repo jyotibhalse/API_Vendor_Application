@@ -5,6 +5,7 @@ import string
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from html import escape
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
@@ -101,7 +102,7 @@ def validate_portal_login(user: User) -> None:
     if approval_status == "pending":
         raise HTTPException(
             status_code=403,
-            detail="Your vendor account is waiting for admin approval.",
+            detail="Account pending approval. Your vendor account is waiting for admin approval.",
         )
 
     detail = user.approval_notes or "Your vendor account was rejected by admin review."
@@ -227,10 +228,10 @@ async def notify_admin_vendor_registered(db: AsyncSession, vendor: User) -> None
     subject = "New vendor registration pending approval"
     message = (
         f"A new vendor has registered and is waiting for approval.<br><br>"
-        f"<strong>Shop:</strong> {vendor.shop_name or 'Not provided'}<br>"
-        f"<strong>Name:</strong> {vendor.full_name or 'Not provided'}<br>"
-        f"<strong>Email:</strong> {vendor.email}<br>"
-        f"<strong>Phone:</strong> {vendor.phone or 'Not provided'}"
+        f"<strong>Shop:</strong> {escape(vendor.shop_name or 'Not provided')}<br>"
+        f"<strong>Name:</strong> {escape(vendor.full_name or 'Not provided')}<br>"
+        f"<strong>Email:</strong> {escape(vendor.email)}<br>"
+        f"<strong>Phone:</strong> {escape(vendor.phone or 'Not provided')}"
     )
 
     for email in await get_admin_notification_emails(db):

@@ -38,12 +38,16 @@ def simple_email_body(title: str, message: str, cta: str | None = None) -> str:
     return f"""
 <!DOCTYPE html>
 <html>
-<body style="background:#0c0d0f;font-family:Arial,sans-serif;margin:0;padding:32px 16px;">
-  <div style="max-width:520px;margin:0 auto;background:#141618;border:1px solid #252830;border-radius:16px;padding:28px;">
-    <h2 style="color:#f0f0f0;font-size:20px;margin:0 0 12px;">{title}</h2>
-    <p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin:0;">{message}</p>
+<body style="background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;margin:0;padding:32px 16px;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:30px;">
+    <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:14px;">Auto Parts IND</div>
+    <h2 style="color:#111827;font-size:22px;margin:0 0 12px;">{title}</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">{message}</p>
     {cta_html}
-    <p style="color:#6b7280;font-size:11px;margin:28px 0 0;">API Vendor Team</p>
+    <p style="color:#6b7280;font-size:12px;line-height:1.6;margin:28px 0 0;">
+      Regards,<br>
+      Auto Parts IND Support Team
+    </p>
   </div>
 </body>
 </html>

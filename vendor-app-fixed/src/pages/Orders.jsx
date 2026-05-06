@@ -400,7 +400,7 @@ function OrderCard({ order, onRefresh }) {
 
       onRefresh()
     } catch (err) {
-      alert(err.response?.data?.detail || "Failed to update status")
+      alert(err.response?.data?.detail || "We could not update this order. Please try again.")
     } finally {
       setBusy(false)
     }

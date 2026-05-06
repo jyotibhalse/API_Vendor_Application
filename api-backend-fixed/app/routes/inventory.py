@@ -53,7 +53,7 @@ async def get_vendor_product(
     )
     product = result.scalars().first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=404, detail="Product not found or you do not have permission to update it.")
     return product
 
 
@@ -70,7 +70,7 @@ async def get_vendor_variant(
     )
     variant = result.scalars().first()
     if not variant:
-        raise HTTPException(status_code=404, detail="Variant not found")
+        raise HTTPException(status_code=404, detail="Variant not found or you do not have permission to update it.")
     return variant
 
 
@@ -170,7 +170,7 @@ async def create_full_inventory(
     await db.commit()
     await db.refresh(variant)
 
-    return {"message": "Inventory created successfully", "variant_id": variant.id, "product_id": product.id}
+    return {"message": "Inventory item has been created successfully.", "variant_id": variant.id, "product_id": product.id}
 
 
 @router.post("/brand/{brand_id}/image")
@@ -183,7 +183,7 @@ async def upload_brand_image(
     result = await db.execute(select(Brand).where(Brand.id == brand_id, Brand.vendor_id == current_user.id))
     brand = result.scalars().first()
     if not brand:
-        raise HTTPException(status_code=404, detail="Brand not found")
+        raise HTTPException(status_code=404, detail="Brand not found or you do not have permission to update it.")
     ensure_image_upload(file)
     previous_url = brand.image_url
     url = upload_file_to_s3(file, "brand_images")
@@ -191,7 +191,7 @@ async def upload_brand_image(
     await db.commit()
     if previous_url and previous_url != url:
         cleanup_storage_urls(previous_url)
-    return {"image_url": url}
+    return {"message": "Brand image has been updated successfully.", "image_url": url}
 
 
 @router.post("/product/{product_id}/image")
@@ -209,7 +209,7 @@ async def upload_product_image(
     await db.commit()
     if previous_url and previous_url != url:
         cleanup_storage_urls(previous_url)
-    return {"image_url": url}
+    return {"message": "Product image has been updated successfully.", "image_url": url}
 
 
 @router.post("/variant/{variant_id}/image")
@@ -227,7 +227,7 @@ async def upload_variant_image(
     await db.commit()
     if previous_url and previous_url != url:
         cleanup_storage_urls(previous_url)
-    return {"image_url": url}
+    return {"message": "Variant image has been updated successfully.", "image_url": url}
 
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -244,7 +244,7 @@ async def update_variant(
     variant.stock = stock
     variant.price = price
     await db.commit()
-    return {"message": "Variant updated"}
+    return {"message": "Variant details have been updated successfully."}
 
 
 @router.delete("/variant/{variant_id}")
@@ -280,7 +280,7 @@ async def delete_variant(
     await db.commit()
     cleanup_storage_urls(*cleanup_urls)
 
-    return {"message": "Variant deleted successfully"}
+    return {"message": "Variant has been removed successfully."}
 
 
 @router.put("/product/{product_id}")
@@ -295,7 +295,7 @@ async def update_product(
     product.name = name.strip().upper()
     product.description = description.strip()
     await db.commit()
-    return {"message": "Product updated"}
+    return {"message": "Product details have been updated successfully."}
 
 
 @router.put("/brand/{brand_id}")
@@ -310,7 +310,7 @@ async def update_brand(
     )
     brand = result.scalars().first()
     if not brand:
-        raise HTTPException(status_code=404, detail="Brand not found")
+        raise HTTPException(status_code=404, detail="Brand not found or you do not have permission to update it.")
     brand.name = name.strip().upper()
     await db.commit()
-    return {"message": "Brand updated"}
+    return {"message": "Brand details have been updated successfully."}

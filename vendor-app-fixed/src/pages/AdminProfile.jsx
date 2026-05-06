@@ -40,7 +40,7 @@ export default function AdminProfile() {
       })
       .catch(() => {
         if (!cancelled) {
-          setError("Unable to load admin profile.")
+          setError("We could not load the admin profile. Please try again shortly.")
         }
       })
       .finally(() => {
@@ -84,9 +84,9 @@ export default function AdminProfile() {
         email: nextUser.email || "",
         phone: nextUser.phone || "",
       })
-      setNotice("Admin profile updated.")
+      setNotice("Admin profile has been updated successfully.")
     } catch (err) {
-      setError(err.response?.data?.detail || "Unable to save admin profile.")
+      setError(err.response?.data?.detail || "We could not save the admin profile. Please try again.")
     } finally {
       setSavingProfile(false)
     }
@@ -97,7 +97,7 @@ export default function AdminProfile() {
     setNotice("")
 
     if (!passwordForm.current_password || !passwordForm.new_password || !passwordForm.confirm_password) {
-      setError("Fill in all password fields.")
+      setError("Please complete all password fields.")
       return
     }
 
@@ -108,7 +108,7 @@ export default function AdminProfile() {
     }
 
     if (passwordForm.new_password !== passwordForm.confirm_password) {
-      setError("New password and confirmation do not match.")
+      setError("The new password confirmation does not match.")
       return
     }
 
@@ -125,9 +125,9 @@ export default function AdminProfile() {
         confirm_password: "",
       })
       await refreshUser()
-      setNotice("Password updated successfully.")
+      setNotice("Password has been updated successfully.")
     } catch (err) {
-      setError(err.response?.data?.detail || "Unable to update password.")
+      setError(err.response?.data?.detail || "We could not update the password. Please try again.")
     } finally {
       setSavingPassword(false)
     }

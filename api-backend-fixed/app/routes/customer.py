@@ -121,17 +121,17 @@ async def create_customer_order(
     )
     variant = variant_result.scalars().first()
     if not variant:
-        raise HTTPException(status_code=404, detail="Variant not found")
+        raise HTTPException(status_code=404, detail="The selected product variant is no longer available.")
 
     product_result = await db.execute(select(Product).where(Product.id == variant.product_id))
     product = product_result.scalars().first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=404, detail="The selected product is no longer available.")
 
     brand_result = await db.execute(select(Brand).where(Brand.id == product.brand_id))
     brand = brand_result.scalars().first()
     if not brand:
-        raise HTTPException(status_code=404, detail="Brand not found")
+        raise HTTPException(status_code=404, detail="The selected brand is no longer available.")
 
     vendor_result = await db.execute(
         select(User).where(
@@ -142,10 +142,10 @@ async def create_customer_order(
         )
     )
     if not vendor_result.scalars().first():
-        raise HTTPException(status_code=403, detail="Vendor is not approved for customer orders")
+        raise HTTPException(status_code=403, detail="This vendor is not approved to receive customer orders.")
 
     if data.quantity > variant.stock:
-        raise HTTPException(status_code=400, detail="Requested quantity exceeds current stock")
+        raise HTTPException(status_code=400, detail="Requested quantity exceeds the available stock.")
 
     try:
         variant.stock -= data.quantity
@@ -177,19 +177,19 @@ async def create_customer_order(
             raise HTTPException(
                 status_code=500,
                 detail=(
-                    "Database schema is outdated for customer orders. "
-                    "Restart the backend or run python migrate.py once."
+                    "Customer orders are temporarily unavailable because the database schema is not up to date. "
+                    "Please contact support."
                 ),
             ) from exc
         raise HTTPException(
             status_code=500,
-            detail="Could not place the order because the database write failed.",
+            detail="We could not place the order at this time. Please try again shortly.",
         ) from exc
     except SQLAlchemyError as exc:
         await db.rollback()
         raise HTTPException(
             status_code=500,
-            detail="Could not place the order because the database write failed.",
+            detail="We could not place the order at this time. Please try again shortly.",
         ) from exc
 
     payload = await get_order_payload(db, order.id)
@@ -200,7 +200,7 @@ async def create_customer_order(
         await order_realtime_hub.publish_many(recipients, "order.created", payload)
 
     return {
-        "message": "Order placed successfully",
+        "message": "Order has been placed successfully.",
         "order_id": order.id,
         "vendor_id": brand.vendor_id,
     }

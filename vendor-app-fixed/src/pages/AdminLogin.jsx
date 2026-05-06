@@ -41,7 +41,7 @@ export default function AdminLogin() {
       await loginAdmin(email, password)
       navigate("/admin", { replace: true })
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || "Admin login failed")
+      setError(err.response?.data?.detail || err.message || "We could not sign you in. Please check your credentials and try again.")
     } finally {
       setLoading(false)
     }

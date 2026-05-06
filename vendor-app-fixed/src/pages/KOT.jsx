@@ -181,7 +181,7 @@ export default function KOT() {
       await api.put(`/orders/${orderId}/${action}`)
       fetchPendingOrders()
     } catch (error) {
-      alert(error.response?.data?.detail || "Action failed")
+      alert(error.response?.data?.detail || "We could not update this order. Please try again.")
     }
   }
 

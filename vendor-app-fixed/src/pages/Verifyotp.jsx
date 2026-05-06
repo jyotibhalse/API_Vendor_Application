@@ -56,7 +56,7 @@ export default function VerifyOTP() {
   const handleVerify = async () => {
     const otpString = otp.join("");
     if (otpString.length < 6) {
-      setError("Enter all 6 digits");
+      setError("Please enter all 6 digits.");
       return;
     }
     setError("");
@@ -65,7 +65,7 @@ export default function VerifyOTP() {
       await api.post("/auth/verify-otp", { email, otp: otpString });
       navigate("/reset-password", { state: { email, otp: otpString } });
     } catch (err) {
-      setError(err.response?.data?.detail || "Invalid OTP. Try again.");
+      setError(err.response?.data?.detail || "The verification code is invalid. Please try again.");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
@@ -81,8 +81,8 @@ export default function VerifyOTP() {
       setOtp(["", "", "", "", "", ""]);
       setCountdown(60);
       inputRefs.current[0]?.focus();
-    } catch {
-      setError("Failed to resend. Try again.");
+    } catch (err) {
+      setError(err.response?.data?.detail || "We could not resend the verification code. Please try again shortly.");
     } finally {
       setResending(false);
     }
@@ -108,7 +108,7 @@ export default function VerifyOTP() {
         </div>
 
         <h1 className="font-syne font-extrabold text-[26px] text-text mb-2">
-          Enter OTP
+          Enter verification code
         </h1>
         <p className="text-[13px] text-text-muted mb-8">
           We sent a 6-digit code to
@@ -157,7 +157,7 @@ export default function VerifyOTP() {
           className="w-full bg-accent text-on-accent font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity mb-4"
           style={{ opacity: loading || otp.join("").length < 6 ? 0.5 : 1 }}
         >
-          {loading ? "Verifying..." : "Verify OTP"}
+          {loading ? "Verifying..." : "Verify code"}
         </button>
 
         {/* Resend */}
@@ -171,7 +171,7 @@ export default function VerifyOTP() {
               disabled={resending}
               className="text-accent font-semibold"
             >
-              {resending ? "Sending..." : "Resend OTP"}
+              {resending ? "Sending..." : "Resend code"}
             </button>
           )}
         </p>

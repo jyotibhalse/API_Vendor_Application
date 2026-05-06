@@ -35,7 +35,7 @@ export default function ResetPassword() {
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError("The password confirmation does not match.");
       return;
     }
 
@@ -49,7 +49,7 @@ export default function ResetPassword() {
       setSuccess(true);
       timerRef.current = setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
-      setError(err.response?.data?.detail || "Reset failed. Start over.");
+      setError(err.response?.data?.detail || "We could not reset your password. Please start the process again.");
     } finally {
       setLoading(false);
     }
@@ -60,10 +60,10 @@ export default function ResetPassword() {
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 text-center">
         <div className="text-5xl mb-4">⚠️</div>
         <p className="text-text font-semibold mb-4">
-          Session expired or invalid.
+          Your password reset session has expired.
         </p>
         <Link to="/forgot-password" className="text-accent font-bold">
-          Start over →
+          Start over
         </Link>
       </div>
     );
@@ -117,7 +117,7 @@ export default function ResetPassword() {
               border: "1px solid rgba(34,197,94,0.2)",
             }}
           >
-            ✅ Password reset! Redirecting to login...
+            Password reset successfully. Redirecting to login...
           </div>
         )}
 
@@ -150,7 +150,7 @@ export default function ResetPassword() {
             />
             {confirm && confirm !== password && (
               <p className="text-[11px] text-red-400 mt-1">
-                Passwords don't match
+                Passwords do not match
               </p>
             )}
           </div>

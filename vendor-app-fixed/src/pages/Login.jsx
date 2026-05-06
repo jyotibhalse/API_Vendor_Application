@@ -59,7 +59,7 @@ export default function Login() {
       const nextUser = await login(email, password, role)
       navigate(getHomeRoute(nextUser.role), { replace: true })
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || "Invalid email or password")
+      setError(err.response?.data?.detail || err.message || "We could not sign you in. Please check your credentials and try again.")
     } finally {
       setLoading(false)
     }

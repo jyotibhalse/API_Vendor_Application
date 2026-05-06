@@ -108,7 +108,7 @@ export default function Registration() {
         },
       })
     } catch (err) {
-      setError(err.response?.data?.detail || "Registration failed. Try again.")
+      setError(err.response?.data?.detail || "We could not complete registration. Please review the form and try again.")
     } finally {
       setLoading(false)
     }

@@ -206,10 +206,10 @@ async def admin_login(payload: AdminLoginRequest, db: AsyncSession = Depends(get
     admin_user = result.scalars().first()
 
     if not admin_user or not verify_password(payload.password, admin_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Invalid admin credentials")
+        raise HTTPException(status_code=400, detail="The email or password entered is incorrect.")
 
     if not admin_user.is_active:
-        raise HTTPException(status_code=403, detail="This admin account is inactive.")
+        raise HTTPException(status_code=403, detail="This admin account is inactive. Please contact support.")
 
     access_token = create_access_token(data={"sub": admin_user.email})
     return {
@@ -344,7 +344,7 @@ async def update_vendor_approval(
     vendor = result.scalars().first()
 
     if vendor is None:
-        raise HTTPException(status_code=404, detail="Vendor not found")
+        raise HTTPException(status_code=404, detail="Vendor not found.")
 
     vendor.approval_status = payload.status
     vendor.approval_notes = payload.notes
@@ -364,21 +364,25 @@ async def update_vendor_approval(
 
     if vendor.email:
         decision = "approved" if payload.status == "approved" else "rejected"
+        decision_title = "Vendor Account Approved" if payload.status == "approved" else "Vendor Account Rejected"
         note = f"<br><br><strong>Admin note:</strong> {escape(payload.notes)}" if payload.notes else ""
         vendor_label = escape(vendor.shop_name or vendor.full_name or vendor.email)
         message = (
-            f"Your vendor account for <strong>{vendor_label}</strong> "
-            f"has been {decision}.{note}"
+            f"Your vendor account for <strong>{vendor_label}</strong> has been {decision}.{note}"
         )
-        cta = "You can now sign in to the vendor app." if payload.status == "approved" else "Contact support if you need help."
+        cta = (
+            "You can now sign in to the vendor portal and start managing your inventory."
+            if payload.status == "approved"
+            else "Please review the note above before submitting a new request or contacting support."
+        )
         send_email(
             vendor.email,
-            f"Vendor account {decision}",
-            simple_email_body(f"Vendor account {decision}", message, cta),
+            decision_title,
+            simple_email_body(decision_title, message, cta),
         )
 
     return {
-        "message": f"Vendor {payload.status} successfully",
+        "message": f"Vendor has been {payload.status} successfully.",
         "vendor": {
             "id": vendor.id,
             "approval_status": vendor.approval_status,
@@ -401,14 +405,14 @@ async def update_vendor_commission(
     vendor = result.scalars().first()
 
     if vendor is None:
-        raise HTTPException(status_code=404, detail="Vendor not found")
+        raise HTTPException(status_code=404, detail="Vendor not found.")
 
     vendor.commission_rate = payload.commission_rate
     await db.commit()
     await db.refresh(vendor)
 
     return {
-        "message": "Vendor commission updated",
+        "message": "Vendor commission has been updated successfully.",
         "vendor": {
             "id": vendor.id,
             "commission_rate": vendor.commission_rate,
@@ -443,7 +447,7 @@ async def update_admin_settings(
     await db.refresh(settings)
 
     return {
-        "message": "Platform settings updated",
+        "message": "Platform settings have been updated successfully.",
         "settings": {
             "default_commission_rate": round(settings.default_commission_rate or 0.0, 2),
             "platform_fee_flat": round(settings.platform_fee_flat or 0.0, 2),

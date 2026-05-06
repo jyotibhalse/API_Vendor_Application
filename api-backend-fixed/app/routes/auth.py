@@ -39,9 +39,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 # ── In-memory OTP store: { email: { otp, expires_at } }
 # For production use Redis instead
 otp_store: dict = {}
+otp_lock_store: dict = {}
 otp_redis = redis_asyncio.from_url(REDIS_URL, decode_responses=True) if REDIS_URL else None
 OTP_TTL_SECONDS = 10 * 60
 OTP_MAX_VERIFY_ATTEMPTS = 5
+OTP_LOCKOUT_SECONDS = 15 * 60
+OTP_RESEND_COOLDOWN_SECONDS = 60
 
 # ── Email config — loaded from environment variables ──
 EMAIL_HOST = "smtp.gmail.com"
@@ -90,7 +93,7 @@ def validate_portal_login(user: User) -> None:
         )
 
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="This account is inactive.")
+        raise HTTPException(status_code=403, detail="This account is inactive. Please contact support.")
 
     if user.role != "vendor":
         return
@@ -105,7 +108,7 @@ def validate_portal_login(user: User) -> None:
             detail="Account pending approval. Your vendor account is waiting for admin approval.",
         )
 
-    detail = user.approval_notes or "Your vendor account was rejected by admin review."
+    detail = user.approval_notes or "Your vendor account was rejected during admin review. Please contact support for assistance."
     raise HTTPException(status_code=403, detail=detail)
 
 
@@ -117,11 +120,16 @@ def otp_key(email: str) -> str:
     return f"password-reset-otp:{email.lower()}"
 
 
+def otp_lock_key(email: str) -> str:
+    return f"password-reset-otp-lock:{email.lower()}"
+
+
 async def save_otp_session(email: str, otp: str) -> None:
     session = {
         "otp": otp,
         "verified": False,
         "attempts": 0,
+        "requested_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=OTP_TTL_SECONDS)).isoformat(),
     }
 
@@ -167,18 +175,43 @@ async def delete_otp_session(email: str) -> None:
     otp_store.pop(email, None)
 
 
-def send_otp_email(to_email: str, otp: str, shop_name: str = ""):
-    subject = "Your Password Reset OTP – API Vendor"
+async def is_otp_locked(email: str) -> bool:
+    if otp_redis is not None:
+        return bool(await otp_redis.exists(otp_lock_key(email)))
+
+    locked_until = otp_lock_store.get(email)
+    if not locked_until:
+        return False
+
+    if datetime.now(timezone.utc) >= datetime.fromisoformat(locked_until):
+        otp_lock_store.pop(email, None)
+        return False
+
+    return True
+
+
+async def lock_otp_verification(email: str) -> None:
+    if otp_redis is not None:
+        await otp_redis.setex(otp_lock_key(email), OTP_LOCKOUT_SECONDS, "locked")
+        return
+
+    otp_lock_store[email] = (
+        datetime.now(timezone.utc) + timedelta(seconds=OTP_LOCKOUT_SECONDS)
+    ).isoformat()
+
+
+def _legacy_send_otp_email(to_email: str, otp: str, shop_name: str = ""):
+    subject = "Your password reset verification code"
     body = f"""
 <!DOCTYPE html>
 <html>
 <body style="background:#0c0d0f;font-family:'DM Sans',Arial,sans-serif;margin:0;padding:40px 20px;">
   <div style="max-width:480px;margin:0 auto;background:#141618;border:1px solid #252830;border-radius:20px;padding:36px;">
     <div style="font-size:28px;margin-bottom:8px;">🔐</div>
-    <h2 style="color:#f0f0f0;font-size:20px;margin:0 0 6px;">Password Reset OTP</h2>
+    <h2 style="color:#f0f0f0;font-size:20px;margin:0 0 6px;">Password reset verification</h2>
     <p style="color:#9ca3af;font-size:13px;margin:0 0 28px;">
       Hi{' ' + shop_name if shop_name else ''},<br>
-      Use the OTP below to reset your password. It expires in <strong style="color:#f4a623;">10 minutes</strong>.
+      Use the verification code below to reset your password. It expires in <strong style="color:#f4a623;">10 minutes</strong>.
     </p>
     <div style="background:#0c0d0f;border:2px solid #f4a623;border-radius:14px;padding:20px;text-align:center;margin-bottom:28px;">
       <div style="color:#f4a623;font-size:38px;font-weight:800;letter-spacing:12px;">{otp}</div>
@@ -211,6 +244,49 @@ def send_otp_email(to_email: str, otp: str, shop_name: str = ""):
         server.sendmail(EMAIL_USER, to_email, msg.as_string())
 
 
+def send_otp_email(to_email: str, otp: str, shop_name: str = ""):
+    safe_shop_name = escape(shop_name or "there")
+    subject = "Your password reset verification code"
+    body = f"""
+<!DOCTYPE html>
+<html>
+<body style="background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;margin:0;padding:32px 16px;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:30px;">
+    <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:14px;">Auto Parts IND</div>
+    <h2 style="color:#111827;font-size:22px;margin:0 0 10px;">Password reset verification</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 24px;">
+      Hello {safe_shop_name},<br>
+      Use the verification code below to reset your password. This code is valid for <strong>10 minutes</strong>.
+    </p>
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;">
+      <div style="color:#c2410c;font-size:34px;font-weight:800;letter-spacing:10px;">{otp}</div>
+    </div>
+    <p style="color:#6b7280;font-size:12px;line-height:1.6;margin:0;">
+      If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.<br><br>
+      Regards,<br>
+      Auto Parts IND Support Team
+    </p>
+  </div>
+</body>
+</html>
+"""
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_FROM
+    msg["To"] = to_email
+    msg.attach(MIMEText(body, "html"))
+
+    if not EMAIL_USER or not EMAIL_PASSWORD:
+        raise RuntimeError("Email delivery is not configured. Please contact support.")
+
+    import smtplib
+
+    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT, timeout=SMTP_TIMEOUT) as server:
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_USER, to_email, msg.as_string())
+
+
 async def get_admin_notification_emails(db: AsyncSession) -> list[str]:
     result = await db.execute(
         select(User.email).where(User.role == "admin", User.is_active.is_(True))
@@ -225,9 +301,9 @@ async def notify_admin_vendor_registered(db: AsyncSession, vendor: User) -> None
     if vendor.role != "vendor":
         return
 
-    subject = "New vendor registration pending approval"
+    subject = "New vendor registration requires review"
     message = (
-        f"A new vendor has registered and is waiting for approval.<br><br>"
+        f"A new vendor registration is ready for admin review.<br><br>"
         f"<strong>Shop:</strong> {escape(vendor.shop_name or 'Not provided')}<br>"
         f"<strong>Name:</strong> {escape(vendor.full_name or 'Not provided')}<br>"
         f"<strong>Email:</strong> {escape(vendor.email)}<br>"
@@ -238,7 +314,7 @@ async def notify_admin_vendor_registered(db: AsyncSession, vendor: User) -> None
         send_email(
             email,
             subject,
-            simple_email_body("Vendor approval needed", message, "Open the admin panel to approve or reject this vendor."),
+            simple_email_body("Vendor Review Required", message, "Open the admin panel to approve or reject this vendor."),
         )
 
 
@@ -250,7 +326,7 @@ async def notify_admin_vendor_registered(db: AsyncSession, vendor: User) -> None
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == user.email))
     if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
 
     new_user = User(
         email=user.email,
@@ -270,7 +346,7 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     await notify_admin_vendor_registered(db, new_user)
 
     return {
-        "message": "User created successfully",
+        "message": "Registration submitted successfully.",
         "user": {
             "id": new_user.id,
             "email": new_user.email,
@@ -285,7 +361,7 @@ async def login(user: UserLogin, db: AsyncSession = Depends(get_db)):
     db_user = result.scalars().first()
 
     if not db_user or not verify_password(user.password, db_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+        raise HTTPException(status_code=400, detail="The email or password entered is incorrect.")
 
     validate_portal_login(db_user)
     access_token = create_access_token(data={"sub": db_user.email})
@@ -316,11 +392,11 @@ async def update_profile(
     if email is not None:
         next_email = email.strip().lower()
         if not next_email:
-            raise HTTPException(status_code=400, detail="Email cannot be empty")
+            raise HTTPException(status_code=400, detail="Email address is required.")
         if next_email != current_user.email:
             result = await db.execute(select(User).where(User.email == next_email))
             if result.scalars().first():
-                raise HTTPException(status_code=400, detail="Email already registered")
+                raise HTTPException(status_code=400, detail="An account with this email already exists.")
             current_user.email = next_email
             email_changed = True
 
@@ -332,7 +408,7 @@ async def update_profile(
     await db.refresh(current_user)
 
     response = {
-        "message": "Profile updated",
+        "message": "Profile has been updated successfully.",
         "user": serialize_user(current_user),
     }
     if email_changed:
@@ -353,7 +429,7 @@ async def update_settings(
     current_user: User = Depends(require_role("vendor")),
 ):
     if payload.inventory_settings is None and payload.notification_settings is None:
-        raise HTTPException(status_code=400, detail="No settings payload provided")
+        raise HTTPException(status_code=400, detail="Please provide at least one settings section to update.")
 
     if payload.inventory_settings is not None:
         current_user.inventory_settings = json.dumps(payload.inventory_settings.model_dump())
@@ -365,7 +441,7 @@ async def update_settings(
     await db.refresh(current_user)
 
     return {
-        "message": "Settings updated",
+        "message": "Settings have been updated successfully.",
         "inventory_settings": parse_settings(current_user.inventory_settings, InventorySettings),
         "notification_settings": parse_settings(current_user.notification_settings, NotificationSettings),
     }
@@ -378,23 +454,41 @@ async def change_password(
     current_user: User = Depends(get_current_user),
 ):
     if not verify_password(payload.current_password, current_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
+        raise HTTPException(status_code=400, detail="The current password you entered is incorrect.")
 
     current_user.hashed_password = hash_password(payload.new_password)
     await db.commit()
-    return {"message": "Password updated successfully"}
+    return {"message": "Your password has been updated successfully."}
 
 
 @router.post("/forgot-password")
 async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     """Step 1 – User enters email, we send OTP"""
     email = payload.email
+    if await is_otp_locked(email):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many incorrect verification attempts. Please wait 15 minutes before requesting a new code.",
+        )
+
+    existing_session = await get_otp_session(email)
+    if existing_session and existing_session.get("requested_at"):
+        requested_at = datetime.fromisoformat(existing_session["requested_at"])
+        cooldown_remaining = OTP_RESEND_COOLDOWN_SECONDS - int(
+            (datetime.now(timezone.utc) - requested_at).total_seconds()
+        )
+        if cooldown_remaining > 0:
+            raise HTTPException(
+                status_code=429,
+                detail=f"A verification code was sent recently. Please wait {cooldown_remaining} seconds before requesting another code.",
+            )
+
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()
 
     # Always return success to avoid exposing which emails are registered
     if not user:
-        return {"message": "If this email exists, an OTP has been sent"}
+        return {"message": "If an account exists for this email, a verification code has been sent."}
 
     otp = generate_otp()
     await save_otp_session(email, otp)
@@ -405,8 +499,8 @@ async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Dep
         # Remove OTP if email failed
         await delete_otp_session(email)
         logger.exception("Failed to send OTP email to user")
-        raise HTTPException(status_code=500, detail="Failed to send email")
-    return {"message": "OTP sent to your email"}
+        raise HTTPException(status_code=500, detail="We could not send the verification email. Please try again shortly.")
+    return {"message": "A verification code has been sent to your registered email address."}
 
 
 @router.post("/verify-otp")
@@ -417,22 +511,36 @@ async def verify_otp(payload: VerifyOTPRequest):
     record = await get_otp_session(email)
 
     if not record:
-        raise HTTPException(status_code=400, detail="No OTP requested for this email")
+        if await is_otp_locked(email):
+            raise HTTPException(
+                status_code=429,
+                detail="Too many incorrect verification attempts. Please wait 15 minutes before trying again.",
+            )
+        raise HTTPException(status_code=400, detail="No active verification code was found. Please request a new code.")
 
     if record.get("attempts", 0) >= OTP_MAX_VERIFY_ATTEMPTS:
         await delete_otp_session(email)
-        raise HTTPException(status_code=429, detail="Too many incorrect OTP attempts. Request a new OTP.")
+        await lock_otp_verification(email)
+        raise HTTPException(status_code=429, detail="Too many incorrect verification attempts. Please wait 15 minutes before trying again.")
 
     if not secrets.compare_digest(record["otp"], otp):
         record["attempts"] = record.get("attempts", 0) + 1
+        if record["attempts"] >= OTP_MAX_VERIFY_ATTEMPTS:
+            await delete_otp_session(email)
+            await lock_otp_verification(email)
+            raise HTTPException(status_code=429, detail="Too many incorrect verification attempts. Please wait 15 minutes before trying again.")
         await update_otp_session(email, record)
-        raise HTTPException(status_code=400, detail="Incorrect OTP")
+        remaining_attempts = OTP_MAX_VERIFY_ATTEMPTS - record["attempts"]
+        raise HTTPException(
+            status_code=400,
+            detail=f"The verification code is incorrect. {remaining_attempts} attempt{'s' if remaining_attempts != 1 else ''} remaining.",
+        )
 
     # Mark OTP as verified (don't delete yet — needed for reset step)
     record["verified"] = True
     await update_otp_session(email, record)
 
-    return {"message": "OTP verified successfully"}
+    return {"message": "Verification code confirmed successfully."}
 
 
 @router.post("/reset-password")
@@ -444,19 +552,19 @@ async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depen
     record = await get_otp_session(email)
 
     if not record:
-        raise HTTPException(status_code=400, detail="No OTP session found. Start over.")
+        raise HTTPException(status_code=400, detail="Your verification session has expired. Please request a new code.")
 
     if not record.get("verified"):
-        raise HTTPException(status_code=400, detail="OTP not verified yet")
+        raise HTTPException(status_code=400, detail="Please verify your code before resetting your password.")
 
     if not secrets.compare_digest(record["otp"], otp):
-        raise HTTPException(status_code=400, detail="Invalid OTP")
+        raise HTTPException(status_code=400, detail="The verification code is invalid. Please request a new code.")
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="We could not find an account for this password reset request.")
 
     user.hashed_password = hash_password(new_password)
     await db.commit()
@@ -464,4 +572,4 @@ async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depen
     # Clean up OTP
     await delete_otp_session(email)
 
-    return {"message": "Password reset successfully"}
+    return {"message": "Your password has been reset successfully. You can now sign in."}

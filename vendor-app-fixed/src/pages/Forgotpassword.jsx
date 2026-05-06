@@ -18,7 +18,7 @@ export default function ForgotPassword() {
       navigate("/verify-otp", { state: { email } });
     } catch (err) {
       setError(
-        err.response?.data?.detail || "Something went wrong. Try again.",
+        err.response?.data?.detail || "We could not send a verification code right now. Please try again shortly.",
       );
     } finally {
       setLoading(false);
@@ -48,7 +48,7 @@ export default function ForgotPassword() {
           Forgot Password?
         </h1>
         <p className="text-[13px] text-text-muted mb-8">
-          Enter your registered email and we'll send you a 6-digit OTP.
+          Enter your registered email and we will send you a 6-digit verification code.
         </p>
 
         {error && (
@@ -92,7 +92,7 @@ export default function ForgotPassword() {
             className="w-full bg-accent text-on-accent font-bold text-[14px] py-[14px] rounded-[14px] transition-opacity"
             style={{ opacity: loading ? 0.7 : 1 }}
           >
-            {loading ? "Sending OTP..." : "Send OTP"}
+            {loading ? "Sending code..." : "Send verification code"}
           </button>
         </form>
       </div>

@@ -110,7 +110,7 @@ async def create_order(
     variant = await get_vendor_owned_variant(db, variant_id, current_user.id)
 
     if not variant:
-        raise HTTPException(status_code=404, detail="Variant not found")
+        raise HTTPException(status_code=404, detail="Variant not found or you do not have permission to create an order for it.")
 
     total = variant.price * quantity
 
@@ -222,10 +222,10 @@ async def accept_order(
     order = result.scalars().first()
 
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=404, detail="Order not found or you do not have permission to update it.")
 
     if order.status != "pending":
-        raise HTTPException(status_code=400, detail="Order is not in pending state")
+        raise HTTPException(status_code=400, detail="Only pending orders can be accepted.")
 
     result = await db.execute(select(OrderItem).where(OrderItem.order_id == order.id))
     items = result.scalars().all()
@@ -238,11 +238,11 @@ async def accept_order(
             lock_for_update=True,
         )
         if variant is None:
-            raise HTTPException(status_code=404, detail=f"Variant {item.variant_id} not found")
+            raise HTTPException(status_code=404, detail="One or more order items are no longer available.")
 
         if order.customer_id is None:
             if variant.stock < item.quantity:
-                raise HTTPException(status_code=400, detail=f"Insufficient stock for variant {variant.id}")
+                raise HTTPException(status_code=400, detail="Insufficient stock is available to accept this order.")
             variant.stock -= item.quantity
 
     order.status = "accepted"
@@ -257,7 +257,7 @@ async def accept_order(
             recipients.add(order.customer_id)
         await order_realtime_hub.publish_many(recipients, "order.updated", payload)
 
-    return {"message": "Order accepted and stock updated"}
+    return {"message": "Order has been accepted successfully."}
 
 
 @router.put("/{order_id}/reject")
@@ -272,10 +272,10 @@ async def reject_order(
     order = result.scalars().first()
 
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=404, detail="Order not found or you do not have permission to update it.")
 
     if order.status not in ("pending", "accepted"):
-        raise HTTPException(status_code=400, detail=f"Cannot reject an order in '{order.status}' state")
+        raise HTTPException(status_code=400, detail="This order can no longer be rejected from its current status.")
 
     if order.status == "accepted" or order.customer_id is not None:
         await restore_order_stock(db, order.id)
@@ -292,7 +292,7 @@ async def reject_order(
             recipients.add(order.customer_id)
         await order_realtime_hub.publish_many(recipients, "order.updated", payload)
 
-    return {"message": "Order rejected"}
+    return {"message": "Order has been rejected and reserved stock has been restored."}
 
 
 @router.put("/{order_id}/status")
@@ -313,14 +313,13 @@ async def update_order_status(
     order = result.scalars().first()
 
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=404, detail="Order not found or you do not have permission to update it.")
 
     allowed = VALID_TRANSITIONS.get(order.status, [])
     if status not in allowed:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot move order from '{order.status}' to '{status}'. "
-                   f"Allowed next states: {allowed}"
+            detail="This status change is not allowed for the current order state."
         )
 
     if status == "rejected" and (order.status == "accepted" or order.customer_id is not None):
@@ -338,4 +337,4 @@ async def update_order_status(
             recipients.add(order.customer_id)
         await order_realtime_hub.publish_many(recipients, "order.updated", payload)
 
-    return {"message": f"Order status updated to {status}", "order_id": order.id}
+    return {"message": "Order status has been updated successfully.", "order_id": order.id}

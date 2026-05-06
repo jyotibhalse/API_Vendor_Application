@@ -89,7 +89,7 @@ export default function AdminLayout() {
     } catch (err) {
       setError(
         err.response?.data?.detail ||
-          "Unable to load admin analytics right now.",
+          "We could not load admin analytics right now. Please try again shortly.",
       );
     } finally {
       setLoading(false);
@@ -132,12 +132,12 @@ export default function AdminLayout() {
         status,
         notes: notesDrafts[vendorId]?.trim() || null,
       });
-      setNotice(`Vendor ${status} successfully.`);
+      setNotice(`Vendor has been ${status} successfully.`);
       await loadAdminData(activeFilter);
     } catch (err) {
       setError(
         err.response?.data?.detail ||
-          `Unable to ${status} this vendor right now.`,
+          `We could not ${status} this vendor right now. Please try again shortly.`,
       );
     } finally {
       setBusyKey("");
@@ -172,11 +172,11 @@ export default function AdminLayout() {
       await api.patch(`/admin/vendors/${vendorId}/commission`, {
         commission_rate: commissionRate,
       });
-      setNotice("Commission override saved.");
+      setNotice("Commission override has been saved successfully.");
       await loadAdminData(activeFilter);
     } catch (err) {
       setError(
-        err.response?.data?.detail || "Unable to save commission override.",
+        err.response?.data?.detail || "We could not save the commission override. Please try again shortly.",
       );
     } finally {
       setBusyKey("");
@@ -197,7 +197,7 @@ export default function AdminLayout() {
         commissionRate < 0 ||
         commissionRate > MAX_COMMISSION_RATE
       ) {
-        setError(`Default commission rate must be between 0 and ${MAX_COMMISSION_RATE}`);
+        setError(`Default commission rate must be between 0 and ${MAX_COMMISSION_RATE}.`);
         setSettingsSaving(false);
         return;
       }
@@ -205,7 +205,7 @@ export default function AdminLayout() {
       // Validate platform fee
       const platformFee = parseFloat(settingsForm.platform_fee_flat);
       if (!isFinite(platformFee) || platformFee < 0 || platformFee > MAX_PLATFORM_FEE) {
-        setError(`Platform fee must be between 0 and ${MAX_PLATFORM_FEE}`);
+        setError(`Platform fee must be between 0 and ${MAX_PLATFORM_FEE}.`);
         setSettingsSaving(false);
         return;
       }
@@ -214,11 +214,11 @@ export default function AdminLayout() {
         default_commission_rate: commissionRate,
         platform_fee_flat: platformFee,
       });
-      setNotice("Platform fee settings updated.");
+      setNotice("Platform fee settings have been updated successfully.");
       await loadAdminData(activeFilter);
     } catch (err) {
       setError(
-        err.response?.data?.detail || "Unable to update platform settings.",
+        err.response?.data?.detail || "We could not update platform settings. Please try again shortly.",
       );
     } finally {
       setSettingsSaving(false);

@@ -150,11 +150,11 @@ export default function Inventory() {
       const price = Number(formData.price)
       const stock = Number(formData.stock)
       if (!Number.isFinite(price) || price <= 0) {
-        alert("Price must be greater than 0")
+        alert("Price must be greater than 0.")
         return
       }
       if (!Number.isInteger(stock) || stock < 0) {
-        alert("Stock must be 0 or higher")
+        alert("Stock must be 0 or higher.")
         return
       }
 
@@ -175,7 +175,7 @@ export default function Inventory() {
       setFormData({ brand_name:"", product_name:"", description:"", vehicle_model:"", price:"", stock:"" })
       setNewProductImgFile(null)
       fetchInventory()
-    } catch (err) { alert(err.response?.data?.detail || "Failed to add") }
+    } catch (err) { alert(err.response?.data?.detail || "We could not add this inventory item. Please try again.") }
   }
 
   const handleUpdateVariant = async () => {
@@ -183,11 +183,11 @@ export default function Inventory() {
       const price = Number(editForm.price)
       const stock = Number(editForm.stock)
       if (!Number.isFinite(price) || price <= 0) {
-        alert("Price must be greater than 0")
+        alert("Price must be greater than 0.")
         return
       }
       if (!Number.isInteger(stock) || stock < 0) {
-        alert("Stock must be 0 or higher")
+        alert("Stock must be 0 or higher.")
         return
       }
 
@@ -203,7 +203,7 @@ export default function Inventory() {
       setEditVariant(null)
       setEditVariantImgFile(null)
       fetchInventory()
-    } catch (err) { alert(err.response?.data?.detail || "Update failed") }
+    } catch (err) { alert(err.response?.data?.detail || "We could not update this variant. Please try again.") }
   }
 
   const handleDeleteVariant = async (id) => {
@@ -211,7 +211,7 @@ export default function Inventory() {
     try {
       await api.delete(`/inventory/variant/${id}`)
       fetchInventory()
-    } catch (err) { alert(err.response?.data?.detail || "Delete failed") }
+    } catch (err) { alert(err.response?.data?.detail || "We could not delete this variant. Please try again.") }
   }
 
   // ── Filter logic ───────────────────────────────────────────────────────────
@@ -257,7 +257,7 @@ export default function Inventory() {
         headers: { "Content-Type": "multipart/form-data" }
       })
       fetchInventory()
-    } catch { alert("Failed to upload brand logo") }
+    } catch { alert("We could not upload the brand logo. Please try again.") }
   }
 
   useEffect(() => {

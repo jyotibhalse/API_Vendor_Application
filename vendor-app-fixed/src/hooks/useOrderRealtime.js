@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import api from "../api/axios"
 
 const WS_RECONNECT_DELAY_MS = 3000
@@ -16,117 +16,74 @@ export function buildOrderWebSocketUrl(token, path = "/ws/orders") {
 export function useOrderRealtime({ onEvent, path = "/ws/orders", enabled = true }) {
   const [liveMode, setLiveMode] = useState(enabled ? "connecting" : "idle")
 
-  const socketRef = useRef(null)
-  const connectWebSocketRef = useRef(null)
-  const reconnectTimeoutRef = useRef(null)
-  const pingIntervalRef = useRef(null)
+  const socketRef    = useRef(null)
+  const reconnectRef = useRef(null)
+  const pingRef      = useRef(null)
+  const onEventRef   = useRef(onEvent)
+  const enabledRef   = useRef(enabled)
+  const connectRef   = useRef(null)
 
-  const clearPingInterval = useEffectEvent(() => {
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current)
-      pingIntervalRef.current = null
-    }
-  })
+  useEffect(() => { onEventRef.current = onEvent }, [onEvent])
+  useEffect(() => { enabledRef.current = enabled }, [enabled])
 
-  const handleRealtimeMessage = useEffectEvent((message) => {
-    if (!message || typeof message !== "object") {
-      return
-    }
+  const clearPing = useCallback(() => {
+    if (pingRef.current) { clearInterval(pingRef.current); pingRef.current = null }
+  }, [])
 
-    if (message.type === "connection.ready") {
-      setLiveMode("live")
-      return
-    }
-
-    if (message.type === "pong") {
-      return
-    }
-
-    onEvent?.(message)
-  })
-
-  const scheduleReconnect = useEffectEvent(() => {
-    clearPingInterval()
-
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-    }
-
+  const scheduleReconnect = useCallback(() => {
+    clearPing()
+    if (reconnectRef.current) clearTimeout(reconnectRef.current)
     setLiveMode("fallback")
-    reconnectTimeoutRef.current = setTimeout(() => {
+    reconnectRef.current = setTimeout(() => {
       setLiveMode("connecting")
-      connectWebSocketRef.current?.()
+      connectRef.current?.()
     }, WS_RECONNECT_DELAY_MS)
-  })
+  }, [clearPing])
 
-  const connectWebSocket = useEffectEvent(() => {
-    if (!enabled) {
-      return
-    }
-
+  const connect = useCallback(() => {
+    if (!enabledRef.current) return
     const token = sessionStorage.getItem("token")
-    if (!token) {
-      setLiveMode("fallback")
-      return
-    }
-
-    if (socketRef.current && socketRef.current.readyState <= WebSocket.OPEN) {
-      return
-    }
+    if (!token) { setLiveMode("fallback"); return }
+    if (socketRef.current && socketRef.current.readyState <= WebSocket.OPEN) return
 
     const socket = new WebSocket(buildOrderWebSocketUrl(token, path))
     socketRef.current = socket
 
     socket.onopen = () => {
       setLiveMode("live")
-      clearPingInterval()
-      pingIntervalRef.current = setInterval(() => {
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send("ping")
-        }
+      clearPing()
+      pingRef.current = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) socket.send("ping")
       }, WS_PING_INTERVAL_MS)
     }
 
     socket.onmessage = (event) => {
       try {
-        handleRealtimeMessage(JSON.parse(event.data))
-      } catch {
-        console.log("Ignoring invalid realtime payload")
-      }
+        const msg = JSON.parse(event.data)
+        if (!msg || typeof msg !== "object") return
+        if (msg.type === "connection.ready") { setLiveMode("live"); return }
+        if (msg.type === "pong") return
+        onEventRef.current?.(msg)
+      } catch { /* ignore malformed frames */ }
     }
 
-    socket.onerror = () => {
-      if (socketRef.current === socket) {
-        socket.close()
-      }
-    }
+    socket.onerror = () => { if (socketRef.current === socket) socket.close() }
 
     socket.onclose = () => {
-      if (socketRef.current === socket) {
-        socketRef.current = null
-      }
-
-      if (enabled) {
-        scheduleReconnect()
-      }
+      if (socketRef.current === socket) socketRef.current = null
+      if (enabledRef.current) scheduleReconnect()
     }
-  })
-  connectWebSocketRef.current = connectWebSocket
+  }, [path, clearPing, scheduleReconnect])
+
+  useEffect(() => { connectRef.current = connect }, [connect])
 
   useEffect(() => {
-    if (!enabled) {
-      setLiveMode("idle")
-      return undefined
-    }
-
+    if (!enabled) { setLiveMode("idle"); return }
     setLiveMode("connecting")
-    connectWebSocket()
-
+    connect()
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-      }
-      clearPingInterval()
+      if (reconnectRef.current) clearTimeout(reconnectRef.current)
+      clearPing()
       if (socketRef.current) {
         socketRef.current.onclose = null
         socketRef.current.onerror = null
@@ -134,6 +91,7 @@ export function useOrderRealtime({ onEvent, path = "/ws/orders", enabled = true 
         socketRef.current = null
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, path])
 
   return liveMode

@@ -764,6 +764,15 @@ export default function Profile() {
 
         <button
           type="button"
+          onClick={() => navigate('/billing')}
+          className="w-full py-[14px] rounded-[14px] text-[14px] font-bold text-accent transition-opacity hover:opacity-80 flex items-center justify-center gap-2"
+          style={{ background: 'rgba(244,166,35,0.08)', border: '1px solid rgba(244,166,35,0.25)' }}
+        >
+          💳 Manage Subscription & Billing
+        </button>
+
+                <button
+          type="button"
           onClick={handleSignOut}
           className="w-full py-[14px] rounded-[14px] text-[14px] font-bold text-red-400 transition-opacity hover:opacity-80 flex items-center justify-center gap-2"
           style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}

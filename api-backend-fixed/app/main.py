@@ -15,6 +15,8 @@ from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.notification_log import NotificationLog
 from app.models.platform_setting import PlatformSetting
+from app.models.plan import Plan
+from app.models.subscription import Subscription
 
 from app.routes.inventory import router as inventory_router
 from app.routes.auth import router as auth_router
@@ -23,6 +25,7 @@ from app.routes.orders import router as orders_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.customer import router as customer_router
 from app.routes.realtime import router as realtime_router
+from app.routes.billing import router as billing_router
 from app.core.low_stock_notifications import low_stock_notification_scheduler
 from app.core.realtime import order_realtime_hub
 from app.core.schema_updates import apply_startup_migrations
@@ -52,6 +55,7 @@ app.include_router(orders_router)
 app.include_router(dashboard_router)
 app.include_router(customer_router)
 app.include_router(realtime_router)
+app.include_router(billing_router)
 
 
 @app.on_event("startup")

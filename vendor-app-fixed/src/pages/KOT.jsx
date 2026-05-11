@@ -1,172 +1,137 @@
-import { useEffect, useEffectEvent, useRef, useState } from "react"
-import { Mail, MapPin, Phone, UserRound } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Mail, MapPin, Phone, UserRound, Clock, AlertTriangle, X } from "lucide-react"
 import api from "../api/axios"
 import { VendorHeroCard } from "../components/layout/VendorPageScaffold"
 import { useUrgentOrderAlerts } from "../hooks/useUrgentOrderAlerts"
+import { buildOrderWebSocketUrl } from "../hooks/useOrderRealtime"
 
-const POLL_INTERVAL_MS = 15000
-const WS_RECONNECT_DELAY_MS = 3000
-const WS_PING_INTERVAL_MS = 20000
+const POLL_INTERVAL_MS   = 15000
+const WS_RECONNECT_MS    = 3000
+const WS_PING_MS         = 20000
+const TICK_INTERVAL_MS   = 30000  // re-render elapsed times every 30s
 
 export default function KOT() {
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [orders, setOrders]     = useState([])
+  const [loading, setLoading]   = useState(true)
   const [liveMode, setLiveMode] = useState("connecting")
+  const [now, setNow]           = useState(() => Date.now())
 
-  const socketRef = useRef(null)
-  const connectWebSocketRef = useRef(null)
-  const reconnectTimeoutRef = useRef(null)
-  const pollIntervalRef = useRef(null)
-  const pingIntervalRef = useRef(null)
-  const ordersRef = useRef([])
-  const initialLoadCompleteRef = useRef(false)
+  // Reject-with-reason modal
+  const [rejectTarget, setRejectTarget] = useState(null) // order object
+  const [rejectReason, setRejectReason] = useState("")
+  const [rejectBusy, setRejectBusy]     = useState(false)
+
+  const socketRef        = useRef(null)
+  const reconnectRef     = useRef(null)
+  const pollRef          = useRef(null)
+  const pingRef          = useRef(null)
+  const tickRef          = useRef(null)
+  const ordersRef        = useRef([])
+  const initialDoneRef   = useRef(false)
+  const connectRef       = useRef(null)
+
   const { markOrdersSeen, notifyForEvent, notifyForOrders } = useUrgentOrderAlerts()
 
-  const clearPingInterval = useEffectEvent(() => {
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current)
-      pingIntervalRef.current = null
-    }
-  })
+  // Keep elapsed times fresh
+  useEffect(() => {
+    tickRef.current = setInterval(() => setNow(Date.now()), TICK_INTERVAL_MS)
+    return () => clearInterval(tickRef.current)
+  }, [])
 
-  const syncOrders = useEffectEvent((nextOrders, { allowAlert = false } = {}) => {
-    const normalizedOrders = sortByNewest(nextOrders)
-
-    ordersRef.current = normalizedOrders
-    setOrders(normalizedOrders)
+  const syncOrders = useCallback((nextOrders, { allowAlert = false } = {}) => {
+    const sorted = sortByNewest(nextOrders)
+    ordersRef.current = sorted
+    setOrders(sorted)
     setLoading(false)
-    initialLoadCompleteRef.current = true
+    initialDoneRef.current = true
+    if (allowAlert) notifyForOrders(sorted)
+    else markOrdersSeen(sorted)
+  }, [notifyForOrders, markOrdersSeen])
 
-    if (allowAlert) {
-      notifyForOrders(normalizedOrders)
-    } else {
-      markOrdersSeen(normalizedOrders)
-    }
-  })
-
-  const fetchPendingOrders = useEffectEvent(async ({ allowAlert = false } = {}) => {
+  const fetchPending = useCallback(async ({ allowAlert = false } = {}) => {
     try {
-      const response = await api.get("/orders/?status=pending")
-      syncOrders(response.data?.orders || [], { allowAlert })
-    } catch (error) {
-      console.log(error.response?.data)
+      const res = await api.get("/orders/?status=pending")
+      syncOrders(res.data?.orders || [], { allowAlert })
+    } catch {
       setLoading(false)
     }
-  })
+  }, [syncOrders])
 
-  const applyRealtimeMessage = useEffectEvent((message) => {
-    if (!message || typeof message !== "object") {
-      return
-    }
+  const applyMessage = useCallback((msg) => {
+    if (!msg || typeof msg !== "object") return
+    if (msg.type === "connection.ready") { setLiveMode("live"); return }
+    if (msg.type === "pong") return
+    if (!["order.created", "order.updated"].includes(msg.type) || !msg.order) return
 
-    if (message.type === "connection.ready") {
-      setLiveMode("live")
-      return
-    }
+    const next = msg.order
+    const map  = new Map(ordersRef.current.map(o => [o.id, o]))
+    notifyForEvent(msg)
 
-    if (message.type === "pong") {
-      return
-    }
+    if (next.status === "pending") map.set(next.id, next)
+    else map.delete(next.id)
 
-    if (!["order.created", "order.updated"].includes(message.type) || !message.order) {
-      return
-    }
-
-    const nextOrder = message.order
-    const nextOrdersMap = new Map(ordersRef.current.map((order) => [order.id, order]))
-    notifyForEvent(message)
-
-    if (nextOrder.status === "pending") {
-      nextOrdersMap.set(nextOrder.id, nextOrder)
-    } else {
-      nextOrdersMap.delete(nextOrder.id)
-    }
-
-    const normalizedOrders = sortByNewest(Array.from(nextOrdersMap.values()))
-    ordersRef.current = normalizedOrders
-
-    setOrders(normalizedOrders)
+    const sorted = sortByNewest(Array.from(map.values()))
+    ordersRef.current = sorted
+    setOrders(sorted)
     setLoading(false)
-    initialLoadCompleteRef.current = true
-  })
+    initialDoneRef.current = true
+  }, [notifyForEvent])
 
-  const scheduleReconnect = useEffectEvent(() => {
-    clearPingInterval()
+  const clearPing = useCallback(() => {
+    if (pingRef.current) { clearInterval(pingRef.current); pingRef.current = null }
+  }, [])
 
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-    }
-
+  const scheduleReconnect = useCallback(() => {
+    clearPing()
+    if (reconnectRef.current) clearTimeout(reconnectRef.current)
     setLiveMode("fallback")
-    reconnectTimeoutRef.current = setTimeout(() => {
+    reconnectRef.current = setTimeout(() => {
       setLiveMode("connecting")
-      connectWebSocketRef.current?.()
-    }, WS_RECONNECT_DELAY_MS)
-  })
+      connectRef.current?.()
+    }, WS_RECONNECT_MS)
+  }, [clearPing])
 
-  const connectWebSocket = useEffectEvent(() => {
+  const connect = useCallback(() => {
     const token = sessionStorage.getItem("token")
-    if (!token) {
-      setLiveMode("fallback")
-      return
-    }
+    if (!token) { setLiveMode("fallback"); return }
+    if (socketRef.current && socketRef.current.readyState <= WebSocket.OPEN) return
 
-    if (socketRef.current && socketRef.current.readyState <= WebSocket.OPEN) {
-      return
-    }
-
-    const socket = new WebSocket(buildKotWebSocketUrl(token))
+    const socket = new WebSocket(buildOrderWebSocketUrl(token, "/ws/kot"))
     socketRef.current = socket
 
     socket.onopen = () => {
       setLiveMode("live")
-      clearPingInterval()
-      pingIntervalRef.current = setInterval(() => {
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send("ping")
-        }
-      }, WS_PING_INTERVAL_MS)
+      clearPing()
+      pingRef.current = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) socket.send("ping")
+      }, WS_PING_MS)
     }
 
     socket.onmessage = (event) => {
-      try {
-        applyRealtimeMessage(JSON.parse(event.data))
-      } catch {
-        console.log("Ignoring invalid realtime payload")
-      }
+      try { applyMessage(JSON.parse(event.data)) } catch { /* ignore */ }
     }
 
-    socket.onerror = () => {
-      if (socketRef.current === socket) {
-        socket.close()
-      }
-    }
+    socket.onerror = () => { if (socketRef.current === socket) socket.close() }
 
     socket.onclose = () => {
-      if (socketRef.current === socket) {
-        socketRef.current = null
-      }
+      if (socketRef.current === socket) socketRef.current = null
       scheduleReconnect()
     }
-  })
-  connectWebSocketRef.current = connectWebSocket
+  }, [applyMessage, clearPing, scheduleReconnect])
+
+  useEffect(() => { connectRef.current = connect }, [connect])
 
   useEffect(() => {
-    fetchPendingOrders({ allowAlert: false })
-    connectWebSocket()
-
-    pollIntervalRef.current = setInterval(() => {
-      fetchPendingOrders({ allowAlert: initialLoadCompleteRef.current })
+    fetchPending({ allowAlert: false })
+    connect()
+    pollRef.current = setInterval(() => {
+      fetchPending({ allowAlert: initialDoneRef.current })
     }, POLL_INTERVAL_MS)
 
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-      }
-      clearPingInterval()
+      clearInterval(pollRef.current)
+      if (reconnectRef.current) clearTimeout(reconnectRef.current)
+      clearPing()
       if (socketRef.current) {
         socketRef.current.onclose = null
         socketRef.current.onerror = null
@@ -174,16 +139,39 @@ export default function KOT() {
         socketRef.current = null
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleAction = async (orderId, action) => {
+  const handleAccept = async (orderId) => {
     try {
-      await api.put(`/orders/${orderId}/${action}`)
-      fetchPendingOrders()
-    } catch (error) {
-      alert(error.response?.data?.detail || "We could not update this order. Please try again.")
+      await api.put(`/orders/${orderId}/accept`)
+      fetchPending()
+    } catch (err) {
+      alert(err.response?.data?.detail || "Could not accept order. Please try again.")
     }
   }
+
+  const openRejectModal = (order) => {
+    setRejectTarget(order)
+    setRejectReason("")
+  }
+
+  const handleRejectConfirm = async () => {
+    if (!rejectTarget) return
+    setRejectBusy(true)
+    try {
+      const params = rejectReason.trim() ? `?reason=${encodeURIComponent(rejectReason.trim())}` : ""
+      await api.put(`/orders/${rejectTarget.id}/reject${params}`)
+      setRejectTarget(null)
+      fetchPending()
+    } catch (err) {
+      alert(err.response?.data?.detail || "Could not reject order. Please try again.")
+    } finally {
+      setRejectBusy(false)
+    }
+  }
+
+  const urgentCount = orders.filter(o => o.is_urgent).length
 
   return (
     <div className="flex flex-col h-full bg-bg animate-fadeUp">
@@ -191,21 +179,13 @@ export default function KOT() {
         <VendorHeroCard
           eyebrow="KOT Queue"
           title="Kitchen order tickets in real time"
-          description="Pending orders stay front and center, with live sync status visible in the same dashboard language as the rest of the vendor app."
+          description="Pending orders stay front and center, with live sync visible at a glance."
           meta={[
-            {
-              label: "Awaiting Prep",
-              value: orders.length,
-              tone: orders.length > 0 ? "red" : "green",
-            },
+            { label: "Awaiting Prep", value: orders.length, tone: orders.length > 0 ? "red" : "green" },
+            { label: "Urgent", value: urgentCount, tone: urgentCount > 0 ? "red" : "green" },
             {
               label: "Live Mode",
-              value:
-                liveMode === "live"
-                  ? "Live updates"
-                  : liveMode === "connecting"
-                    ? "Connecting"
-                    : "Polling fallback",
+              value: liveMode === "live" ? "Live" : liveMode === "connecting" ? "Connecting" : "Polling",
               tone: liveMode === "live" ? "blue" : "amber",
             },
           ]}
@@ -217,55 +197,115 @@ export default function KOT() {
           <div className="text-[13px] text-text-muted text-center mt-10">Loading orders...</div>
         ) : orders.length === 0 ? (
           <div className="text-center mt-16">
+            <div className="text-5xl mb-4">🎉</div>
             <div className="text-[15px] font-semibold text-text">All caught up!</div>
             <div className="text-[12px] text-text-muted mt-1">No pending orders right now</div>
           </div>
         ) : (
-          orders.map((order, index) => (
-            <KOTCard key={order.id} order={order} index={index} onAction={handleAction} />
+          orders.map((order) => (
+            <KOTCard
+              key={order.id}
+              order={order}
+              now={now}
+              onAccept={() => handleAccept(order.id)}
+              onReject={() => openRejectModal(order)}
+            />
           ))
         )}
-        {orders.length > 0 && (
-          <div className="text-center text-[11px] text-text-muted py-2">
-            Scroll for more
-          </div>
-        )}
       </div>
+
+      {/* Reject-with-reason modal */}
+      {rejectTarget && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div
+            className="w-full max-w-[480px] rounded-t-[24px] p-5 pb-8"
+            style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-syne font-bold text-[16px] text-text">
+                Reject Order #{String(rejectTarget.id).padStart(4, "0")}
+              </div>
+              <button onClick={() => setRejectTarget(null)} className="text-text-muted">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-[12px] text-text-muted mb-3">
+              Optionally add a reason. This will be included in the customer notification email.
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              placeholder="e.g. Part not available, out of stock..."
+              maxLength={300}
+              rows={3}
+              className="w-full bg-surface2 text-text text-[13px] px-3 py-2 rounded-[10px] outline-none resize-none"
+              style={{ border: "1px solid rgb(var(--color-border))" }}
+            />
+            <div className="text-right text-[10px] text-text-muted mb-4">{rejectReason.length}/300</div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRejectTarget(null)}
+                className="flex-1 py-[11px] rounded-[12px] text-[13px] font-semibold text-text-muted bg-surface2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectConfirm}
+                disabled={rejectBusy}
+                className="flex-1 py-[11px] rounded-[12px] text-[13px] font-bold text-white bg-red-500 disabled:opacity-50"
+              >
+                {rejectBusy ? "Rejecting..." : "Confirm Reject"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function KOTCard({ order, onAction }) {
+function KOTCard({ order, now, onAccept, onReject }) {
   const isUrgent = order.is_urgent
   const customer = order.customer
-  const elapsed = order.created_at
-    ? getTimeAgo(new Date(order.created_at))
-    : "Just now"
+  const elapsed  = order.created_at ? getTimeAgo(new Date(order.created_at), now) : "Just now"
+  const ageMs    = order.created_at ? now - new Date(order.created_at).getTime() : 0
+  const isStale  = ageMs > 10 * 60 * 1000  // > 10 minutes = stale warning
 
   return (
     <div
       className="rounded-[20px] overflow-hidden mb-3"
       style={{
         background: "rgb(var(--color-surface))",
-        border: isUrgent ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgb(var(--color-border))",
+        border: isUrgent
+          ? "1px solid rgba(239,68,68,0.4)"
+          : isStale
+            ? "1px solid rgba(244,166,35,0.35)"
+            : "1px solid rgb(var(--color-border))",
       }}
     >
       <div className="p-[14px] pb-[10px]">
+        {/* Header row */}
         <div className="flex items-center gap-[6px] mb-[10px]">
           {isUrgent ? (
-            <span className="text-[10px] font-extrabold px-2 py-[2px] rounded bg-red-500 text-white tracking-[0.5px]">
-              URGENT
+            <span className="text-[10px] font-extrabold px-2 py-[2px] rounded bg-red-500 text-white tracking-[0.5px] flex items-center gap-1">
+              <AlertTriangle size={9} /> URGENT
             </span>
           ) : (
             <span className="text-[10px] font-bold px-2 py-[2px] rounded bg-surface2 text-text-muted">
               STANDARD
             </span>
           )}
-          <span className="ml-auto text-[10px] text-text-muted bg-surface2 px-2 py-[2px] rounded">
-            {elapsed}
+          {isStale && !isUrgent && (
+            <span className="text-[10px] font-bold px-2 py-[2px] rounded bg-[rgba(244,166,35,0.18)] text-[#f4a623]">
+              WAITING LONG
+            </span>
+          )}
+          <span className="ml-auto text-[10px] text-text-muted bg-surface2 px-2 py-[2px] rounded flex items-center gap-1">
+            <Clock size={9} /> {elapsed}
           </span>
         </div>
 
+        {/* VRN + ID */}
         <div className="flex items-center justify-between mb-[6px]">
           <div className="font-syne font-extrabold text-[18px] text-text tracking-[1px]">
             {order.vehicle_number || "VRN N/A"}
@@ -273,25 +313,24 @@ function KOTCard({ order, onAction }) {
           <div className="text-[11px] text-text-muted">#{String(order.id).padStart(4, "0")}</div>
         </div>
 
+        {/* Amount */}
         <div className="flex items-center gap-[6px] mb-[10px]">
           <span className="text-[11px] font-bold px-[8px] py-[2px] rounded-full bg-[rgba(59,130,246,0.15)] text-blue-400">
-            Courier
-          </span>
-          <span className="text-[11px] text-text-muted ml-[2px]">
-            {isUrgent ? "High Priority" : "Normal"}
+            {order.items?.length || 0} item{order.items?.length !== 1 ? "s" : ""}
           </span>
           <span className="ml-auto font-syne font-bold text-[14px] text-text">
-            Rs {order.total_amount?.toLocaleString() || "-"}
+            Rs {order.total_amount?.toLocaleString("en-IN") || "-"}
           </span>
         </div>
 
+        {/* Items list */}
         <div className="rounded-[12px] overflow-hidden bg-surface2">
           {order.items && order.items.length > 0 ? (
-            order.items.map((item, index) => (
+            order.items.map((item, idx) => (
               <div
-                key={`${order.id}-${item.variant_id}-${index}`}
+                key={`${order.id}-${item.variant_id}-${idx}`}
                 className="flex justify-between items-center px-[14px] py-[10px]"
-                style={{ borderBottom: index < order.items.length - 1 ? "1px solid rgb(var(--color-border))" : "none" }}
+                style={{ borderBottom: idx < order.items.length - 1 ? "1px solid rgb(var(--color-border))" : "none" }}
               >
                 <div className="text-[12px] text-text-muted">
                   {item.vehicle_model || `Part #${item.variant_id}`}
@@ -304,29 +343,31 @@ function KOTCard({ order, onAction }) {
           )}
         </div>
 
+        {/* Customer */}
         <div
           className="mt-[10px] rounded-[12px] px-[12px] py-[10px]"
           style={{ background: "rgb(var(--color-surface-3))", border: "1px solid rgb(var(--color-border))" }}
         >
           <div className="text-[10px] uppercase tracking-[0.5px] text-text-muted mb-[8px]">Customer Details</div>
           <div className="space-y-[6px]">
-            <CustomerInfoRow icon={UserRound} value={customer?.name || "Name not provided"} />
-            <CustomerInfoRow icon={Phone} value={customer?.phone || "Phone not provided"} />
-            <CustomerInfoRow icon={Mail} value={customer?.email || "Email not provided"} />
-            <CustomerInfoRow icon={MapPin} value={customer?.address || "Address not provided"} multiline />
+            <InfoRow icon={UserRound} value={customer?.name || "Name not provided"} />
+            <InfoRow icon={Phone}     value={customer?.phone || "Phone not provided"} />
+            <InfoRow icon={Mail}      value={customer?.email || "Email not provided"} />
+            <InfoRow icon={MapPin}    value={customer?.address || "Address not provided"} multiline />
           </div>
         </div>
       </div>
 
+      {/* Action buttons */}
       <div className="flex" style={{ borderTop: "1px solid rgb(var(--color-border))" }}>
         <button
-          onClick={() => onAction(order.id, "reject")}
-          className="flex-1 py-[14px] text-center text-[13px] font-bold text-text-muted bg-surface2 transition-opacity hover:opacity-80"
+          onClick={onReject}
+          className="flex-1 py-[14px] text-center text-[13px] font-bold text-red-400 bg-surface2 transition-opacity hover:opacity-80"
         >
           Reject
         </button>
         <button
-          onClick={() => onAction(order.id, "accept")}
+          onClick={onAccept}
           className="flex-1 py-[14px] text-center text-[13px] font-bold text-white bg-green-500 transition-opacity hover:opacity-80"
         >
           Accept
@@ -336,44 +377,29 @@ function KOTCard({ order, onAction }) {
   )
 }
 
-function buildKotWebSocketUrl(token) {
-  const baseUrl = api.defaults.baseURL || window.location.origin
-  const url = new URL(baseUrl)
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
-  url.pathname = "/ws/kot"
-  url.searchParams.set("token", token)
-  return url.toString()
-}
-
-function sortByNewest(orders) {
-  return [...orders].sort((left, right) => {
-    const leftTime = left.created_at ? new Date(left.created_at).getTime() : 0
-    const rightTime = right.created_at ? new Date(right.created_at).getTime() : 0
-    return rightTime - leftTime
-  })
-}
-
-function getTimeAgo(date) {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
-  if (seconds < 60) {
-    return "Just now"
-  }
-
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) {
-    return `${minutes}m ago`
-  }
-
-  return `${Math.floor(minutes / 60)}h ago`
-}
-
-function CustomerInfoRow({ icon: Icon, value, multiline = false }) {
+function InfoRow({ icon: Icon, value, multiline = false }) {
   return (
     <div className={`flex gap-[8px] ${multiline ? "items-start" : "items-center"}`}>
       <Icon size={12} className="text-accent flex-shrink-0 mt-[2px]" />
-      <span className={`text-[11px] text-text ${multiline ? "leading-[1.4]" : ""}`}>
-        {value}
-      </span>
+      <span className={`text-[11px] text-text ${multiline ? "leading-[1.4]" : ""}`}>{value}</span>
     </div>
   )
+}
+
+function sortByNewest(orders) {
+  return [...orders].sort((a, b) => {
+    const at = a.created_at ? new Date(a.created_at).getTime() : 0
+    const bt = b.created_at ? new Date(b.created_at).getTime() : 0
+    // Urgent first, then newest
+    if (b.is_urgent !== a.is_urgent) return b.is_urgent ? 1 : -1
+    return bt - at
+  })
+}
+
+function getTimeAgo(date, now = Date.now()) {
+  const seconds = Math.floor((now - date.getTime()) / 1000)
+  if (seconds < 60) return "Just now"
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  return `${Math.floor(minutes / 60)}h ago`
 }

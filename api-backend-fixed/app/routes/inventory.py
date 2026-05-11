@@ -14,6 +14,7 @@ from app.models.user import User
 from app.schemas.inventory_full import InventoryFullCreate
 
 from app.core.s3 import delete_file_from_storage, upload_file_to_s3
+from app.core.plan_limits import check_brand_limit, check_sku_limit
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 vendor_only = require_role("vendor")
@@ -140,6 +141,11 @@ async def create_full_inventory(
     brand = result.scalars().first()
 
     if not brand:
+        # Plan limit: count existing brands before creating a new one
+        existing_brands_q = await db.execute(select(Brand).where(Brand.vendor_id == current_user.id))
+        brand_count = len(existing_brands_q.scalars().all())
+        await check_brand_limit(db, current_user.id, brand_count)
+
         brand = Brand(name=brand_name, vendor_id=current_user.id)
         db.add(brand)
         await db.commit()
@@ -159,6 +165,20 @@ async def create_full_inventory(
         db.add(product)
         await db.commit()
         await db.refresh(product)
+
+    # Plan limit: count existing SKUs before creating a new variant
+    from app.models.product import Product as _Product
+    from app.models.brand import Brand as _Brand
+    brand_ids_q = await db.execute(select(_Brand.id).where(_Brand.vendor_id == current_user.id))
+    brand_ids = [r for r in brand_ids_q.scalars().all()]
+    if brand_ids:
+        product_ids_q = await db.execute(select(_Product.id).where(_Product.brand_id.in_(brand_ids)))
+        product_ids = [r for r in product_ids_q.scalars().all()]
+        sku_q = await db.execute(select(Variant).where(Variant.product_id.in_(product_ids)))
+        sku_count = len(sku_q.scalars().all())
+    else:
+        sku_count = 0
+    await check_sku_limit(db, current_user.id, sku_count)
 
     variant = Variant(
         product_id=product.id,
@@ -314,3 +334,175 @@ async def update_brand(
     brand.name = name.strip().upper()
     await db.commit()
     return {"message": "Brand details have been updated successfully."}
+
+
+# ── BULK CSV IMPORT ───────────────────────────────────────────────────────────
+
+import csv
+import io
+
+
+@router.post("/bulk-import")
+async def bulk_import_csv(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(vendor_only),
+):
+    """
+    Import inventory from a CSV file.
+
+    Expected columns (case-insensitive, extra columns ignored):
+        brand, product, description, vehicle_model, price, stock
+
+    Schema mapping:
+        brand         → Brand.name        (created per vendor if missing)
+        product       → Product.name      (created per brand if missing)
+        description   → Product.description (optional)
+        vehicle_model → Variant.vehicle_model (the variant identifier)
+        price         → Variant.price
+        stock         → Variant.stock
+
+    Rows are upserted:
+      - Brand   created if name doesn't exist for this vendor
+      - Product created if name doesn't exist under that brand
+      - Variant matched by product_id + vehicle_model; stock/price updated if found, created if not
+    """
+    filename = (file.filename or "").lower()
+    if not filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only .csv files are accepted.")
+
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")   # strip BOM if present
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text))
+
+    if reader.fieldnames is None:
+        raise HTTPException(status_code=400, detail="CSV file appears to be empty.")
+
+    normalised_headers = {h.strip().lower(): h for h in reader.fieldnames}
+    required = {"brand", "product", "vehicle_model", "price", "stock"}
+    missing  = required - set(normalised_headers.keys())
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"CSV is missing required columns: {', '.join(sorted(missing))}. "
+                f"Required: brand, product, vehicle_model, price, stock  (description is optional)."
+            ),
+        )
+
+    rows = list(reader)
+    if not rows:
+        raise HTTPException(status_code=400, detail="CSV file has no data rows.")
+    if len(rows) > 1000:
+        raise HTTPException(status_code=400, detail="CSV import is limited to 1 000 rows per upload.")
+
+    brand_cache:   dict[str, Brand]       = {}
+    product_cache: dict[tuple, Product]   = {}
+
+    created = {"brands": 0, "products": 0, "variants": 0}
+    updated = {"variants": 0}
+    errors:  list[dict] = []
+
+    for row_num, row in enumerate(rows, start=2):   # row 1 = header
+
+        def cell(col: str) -> str:
+            key = normalised_headers.get(col, col)
+            return (row.get(key) or "").strip()
+
+        brand_name    = cell("brand").upper()
+        product_name  = cell("product").upper()
+        description   = cell("description")
+        vehicle_model = cell("vehicle_model").upper()
+        price_raw     = cell("price")
+        stock_raw     = cell("stock")
+
+        if not all([brand_name, product_name, vehicle_model, price_raw, stock_raw]):
+            errors.append({"row": row_num, "error": "One or more required fields are empty — skipped."})
+            continue
+
+        try:
+            price = float(price_raw)
+            if price <= 0:
+                raise ValueError
+        except ValueError:
+            errors.append({"row": row_num, "error": f"Invalid price '{price_raw}' — must be a positive number."})
+            continue
+
+        try:
+            stock = int(float(stock_raw))
+            if stock < 0:
+                raise ValueError
+        except ValueError:
+            errors.append({"row": row_num, "error": f"Invalid stock '{stock_raw}' — must be a non-negative integer."})
+            continue
+
+        # ── Brand ──
+        if brand_name not in brand_cache:
+            result = await db.execute(
+                select(Brand).where(Brand.vendor_id == current_user.id, Brand.name == brand_name)
+            )
+            brand = result.scalars().first()
+            if not brand:
+                brand = Brand(vendor_id=current_user.id, name=brand_name)
+                db.add(brand)
+                await db.flush()
+                created["brands"] += 1
+            brand_cache[brand_name] = brand
+
+        brand = brand_cache[brand_name]
+
+        # ── Product ──
+        product_key = (brand.id, product_name)
+        if product_key not in product_cache:
+            result = await db.execute(
+                select(Product).where(Product.brand_id == brand.id, Product.name == product_name)
+            )
+            product = result.scalars().first()
+            if not product:
+                product = Product(
+                    brand_id=brand.id,
+                    name=product_name,
+                    description=description or product_name,
+                )
+                db.add(product)
+                await db.flush()
+                created["products"] += 1
+            product_cache[product_key] = product
+
+        product = product_cache[product_key]
+
+        # ── Variant (keyed by vehicle_model under this product) ──
+        result = await db.execute(
+            select(Variant).where(
+                Variant.product_id == product.id,
+                Variant.vehicle_model == vehicle_model,
+            )
+        )
+        variant = result.scalars().first()
+        if variant:
+            variant.stock = stock
+            variant.price = price
+            updated["variants"] += 1
+        else:
+            variant = Variant(
+                product_id=product.id,
+                vehicle_model=vehicle_model,
+                price=price,
+                stock=stock,
+            )
+            db.add(variant)
+            created["variants"] += 1
+
+    await db.commit()
+
+    return {
+        "message": "CSV import completed.",
+        "created": created,
+        "updated": updated,
+        "errors":  errors,
+        "error_count": len(errors),
+    }

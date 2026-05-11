@@ -135,10 +135,15 @@ export default function Orders() {
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(false)
 
-  const debounceRef = useRef(null)
+  // Reject-with-reason modal
+  const [rejectTarget, setRejectTarget] = useState(null)
+  const [rejectReason, setRejectReason] = useState("")
+  const [rejectBusy, setRejectBusy]     = useState(false)
+
+  const debounceRef     = useRef(null)
   const activeFilterRef = useRef(activeFilter)
-  const searchRef = useRef(search)
-  const bottomRef = useRef(null)
+  const searchRef       = useRef(search)
+  const bottomRef       = useRef(null)
 
   const fetchOrders = useCallback(async (filter, searchValue, { showLoader = true } = {}) => {
     if (showLoader) {
@@ -272,6 +277,26 @@ export default function Orders() {
     setActiveFilter(filter)
   }
 
+  const openRejectModal = (order) => {
+    setRejectTarget(order)
+    setRejectReason("")
+  }
+
+  const handleRejectConfirm = async () => {
+    if (!rejectTarget) return
+    setRejectBusy(true)
+    try {
+      const params = rejectReason.trim() ? `?reason=${encodeURIComponent(rejectReason.trim())}` : ""
+      await api.put(`/orders/${rejectTarget.id}/reject${params}`)
+      setRejectTarget(null)
+      fetchOrders(activeFilterRef.current, searchRef.current, { showLoader: false })
+    } catch (err) {
+      alert(err.response?.data?.detail || "Could not reject order. Please try again.")
+    } finally {
+      setRejectBusy(false)
+    }
+  }
+
   const pending = orders.filter((order) => order.status === "pending").length
   const active = orders.filter((order) =>
     ["accepted", "packing", "out_for_delivery"].includes(order.status),
@@ -348,6 +373,7 @@ export default function Orders() {
                     showLoader: false,
                   })
                 }
+                onRequestReject={() => openRejectModal(order)}
               />
             ))}
 
@@ -367,40 +393,86 @@ export default function Orders() {
           </>
         )}
       </div>
+
+      {/* Reject-with-reason modal */}
+      {rejectTarget && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div
+            className="w-full max-w-[480px] rounded-t-[24px] p-5 pb-8"
+            style={{ background: "rgb(var(--color-surface))", border: "1px solid rgb(var(--color-border))" }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-syne font-bold text-[16px] text-text">
+                Reject Order #{String(rejectTarget.id).padStart(4, "0")}
+              </div>
+              <button onClick={() => setRejectTarget(null)} className="text-text-muted">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-[12px] text-text-muted mb-3">
+              Optionally add a reason — it will be included in the customer notification email.
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              placeholder="e.g. Part not available, insufficient stock..."
+              maxLength={300}
+              rows={3}
+              className="w-full bg-surface2 text-text text-[13px] px-3 py-2 rounded-[10px] outline-none resize-none"
+              style={{ border: "1px solid rgb(var(--color-border))" }}
+            />
+            <div className="text-right text-[10px] text-text-muted mb-4">{rejectReason.length}/300</div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRejectTarget(null)}
+                className="flex-1 py-[11px] rounded-[12px] text-[13px] font-semibold text-text-muted bg-surface2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectConfirm}
+                disabled={rejectBusy}
+                className="flex-1 py-[11px] rounded-[12px] text-[13px] font-bold text-white bg-red-500 disabled:opacity-50"
+              >
+                {rejectBusy ? "Rejecting..." : "Confirm Reject"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function OrderCard({ order, onRefresh }) {
+function OrderCard({ order, onRefresh, onRequestReject }) {
   const [busy, setBusy] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
-  const status = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
+  const status  = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
   const actions = NEXT_ACTIONS[order.status] || []
-  const items = order.items || []
+  const items   = order.items || []
   const customer = order.customer
   const time = order.created_at
-    ? new Date(order.created_at).toLocaleString("en-IN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
+    ? new Date(order.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
     : ""
 
   const handleAction = async (nextStatus) => {
-    setBusy(true)
+    // Rejection is handled by parent modal for reason capture
+    if (nextStatus === "rejected") {
+      onRequestReject?.()
+      return
+    }
 
+    setBusy(true)
     try {
       if (nextStatus === "accepted") {
         await api.put(`/orders/${order.id}/accept`)
-      } else if (nextStatus === "rejected") {
-        await api.put(`/orders/${order.id}/reject`)
       } else {
         await api.put(`/orders/${order.id}/status?status=${nextStatus}`)
       }
-
       onRefresh()
     } catch (err) {
-      alert(err.response?.data?.detail || "We could not update this order. Please try again.")
+      alert(err.response?.data?.detail || "Could not update order. Please try again.")
     } finally {
       setBusy(false)
     }
@@ -602,14 +674,20 @@ function OrderCard({ order, onRefresh }) {
 
       {isRejected && (
         <div
-          className="mx-[14px] mb-[14px] py-[8px] rounded-xl text-[12px] font-bold text-center"
-          style={{
-            background: "rgba(239,68,68,0.1)",
-            color: "#ef4444",
-            border: "1px solid rgba(239,68,68,0.2)",
-          }}
+          className="mx-[14px] mb-[14px] rounded-xl overflow-hidden"
+          style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
         >
-          Order rejected
+          <div className="py-[8px] px-3 text-[12px] font-bold text-center text-red-400">
+            Order rejected
+          </div>
+          {order.reject_reason && (
+            <div
+              className="px-3 pb-[10px] text-[11px] text-red-300 text-center leading-[1.5]"
+              style={{ borderTop: "1px solid rgba(239,68,68,0.15)" }}
+            >
+              Reason: {order.reject_reason}
+            </div>
+          )}
         </div>
       )}
     </div>

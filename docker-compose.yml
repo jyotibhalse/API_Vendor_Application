@@ -1,100 +1,62 @@
-name: ${COMPOSE_PROJECT_NAME:-api-vendor-application}
+version: "3.9"
 
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
+      POSTGRES_USER: ${POSTGRES_USER:-apivendor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: ${POSTGRES_DB:-api_vendor}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    ports:
-      - "${POSTGRES_BIND_IP:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-api_vendor}"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apivendor}"]
+      interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 10s
-    networks:
-      - app-network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   backend:
     build:
-      context: ./api-backend-fixed
+      context: .
       dockerfile: Dockerfile
-    image: api-vendor-backend:latest
     restart: unless-stopped
+    env_file: .env
     environment:
-      ENV: ${ENV:-development}
-      SECRET_KEY: ${SECRET_KEY:-dev-secret-key}
-      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@autoparts.local}
-      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-Admin@123}
-      REDIS_URL: ${REDIS_URL:-}
-      EMAIL_USER: ${EMAIL_USER:-}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
-      EMAIL_FROM: ${EMAIL_FROM:-API Vendor <noreply@example.com>}
-      LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES: ${LOW_STOCK_NOTIFICATION_INTERVAL_MINUTES:-60}
-      LOW_STOCK_NOTIFICATION_REPEAT_HOURS: ${LOW_STOCK_NOTIFICATION_REPEAT_HOURS:-24}
-      LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS: ${LOW_STOCK_NOTIFICATION_STARTUP_DELAY_SECONDS:-15}
-      POSTGRES_DB: ${POSTGRES_DB:-api_vendor}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-api_vendor}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_REGION: ${AWS_REGION:-ap-south-1}
-      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-}
-      USE_S3: ${USE_S3:-false}
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)",
-        ]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    networks:
-      - app-network
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
 
   frontend:
     build:
-      context: ./vendor-app-fixed
+      context: ../vendor-app-fixed
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
-    image: api-vendor-frontend:latest
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ > /dev/null 2>&1 || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - app-network
+      - "80:80"
+    depends_on:
+      - backend
 
 volumes:
-  postgres_data:
-
-networks:
-  app-network:
-    driver: bridge
+  pg_data:
+  uploads_data:

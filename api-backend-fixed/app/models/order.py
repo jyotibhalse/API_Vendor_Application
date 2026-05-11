@@ -13,6 +13,7 @@ class Order(Base):
     total_amount = Column(Float, default=0.0)   # calculated on creation
     vehicle_number = Column(String, nullable=True)
     is_urgent = Column(Boolean, default=False)
+    reject_reason = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     items = relationship("OrderItem", back_populates="order")

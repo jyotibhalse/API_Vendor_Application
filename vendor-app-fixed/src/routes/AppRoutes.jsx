@@ -9,6 +9,7 @@ import CustomerProfile from "../customer/pages/CustomerProfile";
 import AdminAlerts from "../pages/AdminAlerts";
 import AdminApprovals from "../pages/AdminApprovals";
 import Alerts from "../pages/Alerts";
+import Billing from "../pages/Billing";
 import AdminLogin from "../pages/AdminLogin";
 import AdminPanel from "../pages/AdminPanel";
 import AdminProfile from "../pages/AdminProfile";
@@ -76,6 +77,7 @@ export default function AppRoutes() {
         <Route path="orders" element={<Orders />} />
         <Route path="kot" element={<KOT />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="billing" element={<Billing />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />

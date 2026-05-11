@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react"
-import { ChevronDown, ChevronUp, Pencil, Trash2, X, Search, Camera, ImagePlus } from "lucide-react"
+import { useEffect, useState, useRef, useCallback } from "react"
+import { ChevronDown, ChevronUp, Pencil, Trash2, X, Search, Camera, ImagePlus, ScanBarcode, Upload, FileSpreadsheet, CheckCircle2, AlertCircle } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 import api from "../api/axios"
 import {
@@ -128,6 +128,20 @@ export default function Inventory() {
   const variantRefs = useRef(new Map())
   const highlightTimeoutRef = useRef(null)
 
+  // -- Barcode scanner state --
+  const [showBarcodeModal, setShowBarcodeModal] = useState(false)
+  const [barcodeInput, setBarcodeInput]         = useState("")
+  const [barcodeResult, setBarcodeResult]       = useState(null)   // { found, variant }
+  const [barcodeSearching, setBarcodeSearching] = useState(false)
+  const barcodeInputRef = useRef(null)
+
+  // -- CSV import state --
+  const [showCsvModal, setShowCsvModal]   = useState(false)
+  const [csvFile, setCsvFile]             = useState(null)
+  const [csvUploading, setCsvUploading]   = useState(false)
+  const [csvResult, setCsvResult]         = useState(null)  // server response
+  const csvFileInputRef = useRef(null)
+
   const fetchInventory = async () => {
     try {
       const res = await api.get("/inventory/")
@@ -214,7 +228,67 @@ export default function Inventory() {
     } catch (err) { alert(err.response?.data?.detail || "We could not delete this variant. Please try again.") }
   }
 
-  // ── Filter logic ───────────────────────────────────────────────────────────
+  // -- Barcode search handler --
+  const handleBarcodeSearch = useCallback(async (code) => {
+    const query = (code || barcodeInput).trim()
+    if (!query) return
+    setBarcodeSearching(true)
+    setBarcodeResult(null)
+    try {
+      // Search locally across loaded inventory
+      let found = null
+      for (const brand of inventory) {
+        for (const product of brand.products || []) {
+          for (const variant of product.variants || []) {
+            // Match against variant name, or barcode field if it exists
+            if (
+              variant.barcode === query ||
+              variant.name === query.toUpperCase() ||
+              String(variant.id) === query
+            ) {
+              found = {
+                brand: brand.brand_name,
+                product: product.product_name,
+                variant: variant.name,
+                stock: variant.stock,
+                price: variant.price,
+                id: variant.id,
+                image_url: variant.image_url,
+              }
+              break
+            }
+          }
+          if (found) break
+        }
+        if (found) break
+      }
+      setBarcodeResult({ found: !!found, variant: found })
+    } finally {
+      setBarcodeSearching(false)
+    }
+  }, [barcodeInput, inventory])
+
+  // -- CSV import handler --
+  const handleCsvImport = async () => {
+    if (!csvFile) return
+    setCsvUploading(true)
+    setCsvResult(null)
+    try {
+      const fd = new FormData()
+      fd.append("file", csvFile)
+      const res = await api.post("/inventory/bulk-import", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      setCsvResult(res.data)
+      fetchInventory()
+    } catch (err) {
+      setCsvResult({ error: err.response?.data?.detail || "Upload failed. Please try again." })
+    } finally {
+      setCsvUploading(false)
+    }
+  }
+
+  // -- Filter logic -----------------------------------------------------------
   const brandNames = ["All", ...inventory.map(b => b.brand_name)]
   const q = searchQuery.toLowerCase().trim()
 
@@ -366,7 +440,7 @@ export default function Inventory() {
                 {/* Brand header row */}
                 <div className="flex items-center gap-3 p-4">
 
-                  {/* Brand logo — tap to upload, only set once per brand */}
+                  {/* Brand logo -- tap to upload, only set once per brand */}
                   <BrandLogoUpload
                     src={brand.brand_image_url}
                     onFile={(file) => handleBrandLogoUpload(brand.brand_id, file)}
@@ -457,14 +531,33 @@ export default function Inventory() {
         )}
       </div>
 
-      {/* FAB */}
-      <button
-        onClick={() => setShowAddModal(true)}
-        className="fixed bottom-[100px] right-5 w-[52px] h-[52px] rounded-[16px] bg-accent text-on-accent font-bold text-[24px] flex items-center justify-center z-50 transition-transform hover:scale-105"
-        style={{ boxShadow: "0 4px 16px rgba(244,166,35,0.4)" }}
-      >+</button>
+      {/* FAB speed-dial -- Add / Barcode / CSV */}
+      <div className="fixed bottom-[100px] right-5 flex flex-col items-end gap-[10px] z-50">
+        {/* Barcode scan */}
+        <button
+          onClick={() => { setShowBarcodeModal(true); setBarcodeInput(""); setBarcodeResult(null) }}
+          className="flex items-center gap-2 px-3 py-[9px] rounded-[14px] bg-[#141618] border border-[#252830] text-accent text-[12px] font-semibold shadow-lg transition-transform hover:scale-105"
+          style={{ boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
+        >
+          <ScanBarcode size={16} /> Scan
+        </button>
+        {/* CSV import */}
+        <button
+          onClick={() => { setShowCsvModal(true); setCsvFile(null); setCsvResult(null) }}
+          className="flex items-center gap-2 px-3 py-[9px] rounded-[14px] bg-[#141618] border border-[#252830] text-accent text-[12px] font-semibold shadow-lg transition-transform hover:scale-105"
+          style={{ boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
+        >
+          <FileSpreadsheet size={16} /> Import CSV
+        </button>
+        {/* Add product */}
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="w-[52px] h-[52px] rounded-[16px] bg-accent text-on-accent font-bold text-[24px] flex items-center justify-center transition-transform hover:scale-105"
+          style={{ boxShadow: "0 4px 16px rgba(244,166,35,0.4)" }}
+        >+</button>
+      </div>
 
-      {/* ── Add Product Modal ── */}
+      {/* -- Add Product Modal -- */}
       {showAddModal && (
         <Modal title="Add Inventory" onClose={() => setShowAddModal(false)}>
           <div className="space-y-3">
@@ -523,9 +616,171 @@ export default function Inventory() {
         </Modal>
       )}
 
-      {/* ── Edit Variant Modal ── */}
+      {/* -- Barcode Scanner Modal -- */}
+      {showBarcodeModal && (
+        <Modal title="Barcode / Part Lookup" onClose={() => setShowBarcodeModal(false)}>
+          <div className="space-y-3">
+            <p className="text-[12px] text-text-muted">
+              Scan a barcode or type a variant name / ID to find it instantly.
+            </p>
+            <div className="flex gap-2">
+              <input
+                ref={barcodeInputRef}
+                autoFocus
+                type="text"
+                placeholder="Scan or type part name / barcode…"
+                value={barcodeInput}
+                onChange={e => setBarcodeInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleBarcodeSearch()}
+                className="flex-1 bg-surface2 text-text text-[13px] px-[12px] py-[10px] rounded-[10px] outline-none"
+                style={{ border: "1px solid rgb(var(--color-border))" }}
+                onFocus={e => e.target.style.borderColor = "#f4a623"}
+                onBlur={e => e.target.style.borderColor = "rgb(var(--color-border))"}
+              />
+              <button
+                onClick={() => handleBarcodeSearch()}
+                disabled={barcodeSearching || !barcodeInput.trim()}
+                className="px-4 py-[10px] rounded-[10px] bg-accent text-on-accent font-bold text-[13px] disabled:opacity-50"
+              >
+                {barcodeSearching ? "…" : "Search"}
+              </button>
+            </div>
+
+            {/* Result */}
+            {barcodeResult && (
+              barcodeResult.found ? (
+                <div className="rounded-[12px] p-3 space-y-2" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)" }}>
+                  <div className="flex items-center gap-2 text-green-400 text-[12px] font-bold">
+                    <CheckCircle2 size={14} /> Part Found
+                  </div>
+                  {barcodeResult.variant.image_url && (
+                    <img src={barcodeResult.variant.image_url} className="w-16 h-16 object-cover rounded-[10px]" alt="" />
+                  )}
+                  <div className="text-[11px] text-text-muted space-y-1">
+                    <div><span className="text-text font-semibold">Brand:</span> {barcodeResult.variant.brand}</div>
+                    <div><span className="text-text font-semibold">Product:</span> {barcodeResult.variant.product}</div>
+                    <div><span className="text-text font-semibold">Variant:</span> {barcodeResult.variant.variant}</div>
+                    <div className="flex gap-4 pt-1">
+                      <span style={{ color: "#22c55e" }} className="font-bold text-[12px]">₹{barcodeResult.variant.price}</span>
+                      <span className={`font-bold text-[12px] ${barcodeResult.variant.stock === 0 ? "text-red-400" : barcodeResult.variant.stock <= 10 ? "text-amber-400" : "text-green-400"}`}>
+                        {barcodeResult.variant.stock} in stock
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowBarcodeModal(false)
+                      // Open edit modal for this variant
+                      setEditVariant({ id: barcodeResult.variant.id, image_url: barcodeResult.variant.image_url })
+                      setEditForm({ stock: String(barcodeResult.variant.stock), price: String(barcodeResult.variant.price) })
+                    }}
+                    className="text-[11px] text-accent underline"
+                  >Edit stock / price →</button>
+                </div>
+              ) : (
+                <div className="rounded-[12px] p-3 flex items-center gap-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                  <AlertCircle size={14} className="text-red-400 flex-shrink-0" />
+                  <span className="text-[12px] text-red-300">No part found matching that code or name.</span>
+                </div>
+              )
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* -- CSV Import Modal -- */}
+      {showCsvModal && (
+        <Modal title="Bulk Import via CSV" onClose={() => setShowCsvModal(false)}>
+          <div className="space-y-4">
+            {/* Format guide */}
+            <div className="rounded-[10px] p-3 text-[11px] text-text-muted space-y-1" style={{ background: "rgb(var(--color-surface-2))", border: "1px solid rgb(var(--color-border))" }}>
+              <div className="text-text font-semibold text-[12px] mb-2">Required CSV columns</div>
+              <div className="font-mono text-accent text-[10px] overflow-x-auto whitespace-nowrap">
+                brand, product, description, vehicle_model, price, stock
+              </div>
+              <div className="mt-2">
+                <code className="text-accent text-[10px]">vehicle_model</code> is the variant identifier (e.g. "Alto 800 Front").
+                Existing variants are updated; new ones are created. Max 1 000 rows.
+              </div>
+              <a
+                href="data:text/csv;charset=utf-8,brand%2Cproduct%2Cdescription%2Cvehicle_model%2Cprice%2Cstock%0ABosch%2CBrake%20Pad%20Set%2CFront%20disc%20pads%2CAlto%20800%20Front%2C450%2C24%0ABosch%2CBrake%20Pad%20Set%2CRear%20drum%20pads%2CAlto%20800%20Rear%2C380%2C12"
+                download="inventory_template.csv"
+                className="inline-block mt-2 text-accent underline text-[11px]"
+              >
+                Download sample CSV
+              </a>
+            </div>
+
+            {/* File picker */}
+            <div
+              onClick={() => csvFileInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-2 py-6 rounded-[12px] cursor-pointer transition-colors"
+              style={{ border: `2px dashed ${csvFile ? "#f4a623" : "rgb(var(--color-border))"}`, background: "rgb(var(--color-surface-2))" }}
+            >
+              <Upload size={22} className={csvFile ? "text-accent" : "text-text-faint"} />
+              <span className="text-[12px] text-text-muted text-center">
+                {csvFile ? csvFile.name : "Tap to choose a .csv file"}
+              </span>
+              <input
+                ref={csvFileInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={e => { setCsvFile(e.target.files?.[0] || null); setCsvResult(null) }}
+              />
+            </div>
+
+            {/* Upload button */}
+            <button
+              onClick={handleCsvImport}
+              disabled={!csvFile || csvUploading}
+              className="w-full bg-accent text-on-accent font-bold py-[12px] rounded-[12px] text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40"
+            >
+              {csvUploading ? "Importing…" : "Import Now"}
+            </button>
+
+            {/* Result */}
+            {csvResult && !csvResult.error && (
+              <div className="rounded-[12px] p-3 space-y-2" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.3)" }}>
+                <div className="flex items-center gap-2 text-green-400 text-[12px] font-bold">
+                  <CheckCircle2 size={14} /> Import complete
+                </div>
+                <div className="text-[11px] text-text-muted space-y-[3px]">
+                  <div>Brands created: <span className="text-text font-semibold">{csvResult.created?.brands}</span></div>
+                  <div>Products created: <span className="text-text font-semibold">{csvResult.created?.products}</span></div>
+                  <div>Variants created: <span className="text-text font-semibold">{csvResult.created?.variants}</span></div>
+                  <div>Variants updated: <span className="text-text font-semibold">{csvResult.updated?.variants}</span></div>
+                  {csvResult.error_count > 0 && (
+                    <div className="text-amber-400 mt-1">{csvResult.error_count} rows had errors and were skipped.</div>
+                  )}
+                </div>
+                {csvResult.errors?.length > 0 && (
+                  <div className="mt-2 space-y-1 max-h-[80px] overflow-y-auto">
+                    {csvResult.errors.map((e, i) => (
+                      <div key={i} className="text-[10px] text-red-300">Row {e.row}: {e.error}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {csvResult?.error && (
+              <div className="rounded-[12px] p-3 flex items-start gap-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)" }}>
+                <AlertCircle size={14} className="text-red-400 flex-shrink-0 mt-[1px]" />
+                <span className="text-[12px] text-red-300">{csvResult.error}</span>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
       {editVariant && (
-        <Modal title="Edit Variant" onClose={() => { setEditVariant(null); setEditVariantImgFile(null) }}>
+  <Modal
+    title="Edit Variant"
+    onClose={() => {
+      setEditVariant(null)
+      setEditVariantImgFile(null)
+    }}
+  >
+        {/* <Modal title="Edit Variant" onClose={() => { setEditVariant(null); setEditVariantImgFile(null) }}> */}
           {/* Variant image upload */}
           <div className="flex items-center gap-3 mb-4">
             <UploadThumb
@@ -578,7 +833,7 @@ export default function Inventory() {
   )
 }
 
-// Brand logo — shows image if set, otherwise shows dashed upload zone
+// Brand logo -- shows image if set, otherwise shows dashed upload zone
 // Once a logo is set it displays it, but you can still tap to change it
 function BrandLogoUpload({ src, onFile }) {
   const ref = useRef()

@@ -263,6 +263,7 @@ async def accept_order(
 @router.put("/{order_id}/reject")
 async def reject_order(
     order_id: int,
+    reason: Optional[str] = Query(default=None, max_length=300),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(vendor_only),
 ):
@@ -281,6 +282,7 @@ async def reject_order(
         await restore_order_stock(db, order.id)
 
     order.status = "rejected"
+    order.reject_reason = reason.strip() if reason else None
     await db.commit()
     await db.refresh(order)
     await notify_customer_status_change(db, order)
@@ -338,3 +340,61 @@ async def update_order_status(
         await order_realtime_hub.publish_many(recipients, "order.updated", payload)
 
     return {"message": "Order status has been updated successfully.", "order_id": order.id}
+
+
+@router.get("/alerts/summary")
+async def get_alerts_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(vendor_only),
+):
+    """
+    Returns a lightweight alert summary for the vendor:
+      - pending_count   : orders awaiting action
+      - low_stock_count : variants at or below low_stock_threshold
+      - out_of_stock_count : variants with stock == 0
+    Used by the Alerts page header and push notification badge.
+    """
+    import json as _json
+    from app.schemas.user import InventorySettings
+
+    # Pending orders
+    pending_result = await db.execute(
+        select(func.count()).select_from(Order).where(
+            Order.vendor_id == current_user.id,
+            Order.status == "pending",
+        )
+    )
+    pending_count = pending_result.scalar() or 0
+
+    # Stock thresholds
+    raw_inv = current_user.inventory_settings
+    try:
+        inv_settings = InventorySettings(**(_json.loads(raw_inv) if raw_inv else {}))
+    except Exception:
+        inv_settings = InventorySettings()
+
+    threshold = inv_settings.low_stock_threshold
+
+    from app.models.brand import Brand
+    from app.models.product import Product
+    from app.models.variant import Variant
+
+    low_result = await db.execute(
+        select(func.count()).select_from(Variant)
+        .join(Product, Variant.product_id == Product.id)
+        .join(Brand, Product.brand_id == Brand.id)
+        .where(Brand.vendor_id == current_user.id, Variant.stock <= threshold, Variant.stock > 0)
+    )
+    out_result = await db.execute(
+        select(func.count()).select_from(Variant)
+        .join(Product, Variant.product_id == Product.id)
+        .join(Brand, Product.brand_id == Brand.id)
+        .where(Brand.vendor_id == current_user.id, Variant.stock == 0)
+    )
+
+    return {
+        "pending_orders": pending_count,
+        "low_stock": low_result.scalar() or 0,
+        "out_of_stock": out_result.scalar() or 0,
+        "threshold": threshold,
+    }

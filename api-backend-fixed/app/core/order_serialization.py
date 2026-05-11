@@ -74,6 +74,7 @@ async def serialize_order(
         "total_amount": order.total_amount,
         "vehicle_number": order.vehicle_number,
         "is_urgent": order.is_urgent,
+        "reject_reason": getattr(order, "reject_reason", None),
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "vendor_id": order.vendor_id if include_vendor else None,
         "vendor_name": vendor_name,

@@ -103,5 +103,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --show-error --silent --max-time 30 \
-            "http://api-ba-Appli-3rQ8Rx47DyPA-902428055.ap-south-1.elb.amazonaws.com/"
+          for attempt in {1..24}; do
+            if curl --fail --show-error --silent --max-time 10 \
+              "http://api-ba-Appli-3rQ8Rx47DyPA-902428055.ap-south-1.elb.amazonaws.com/"; then
+              exit 0
+            fi
+            echo "Load balancer is not ready yet; retry ${attempt}/24..."
+            sleep 5
+          done
+
+          echo "Load balancer verification failed after retries."
+          exit 1

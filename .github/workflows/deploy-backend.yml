@@ -21,16 +21,28 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare SSH key
         shell: bash
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT || '22' }}
         run: |
           set -euo pipefail
+          missing=()
+          [ -n "$EC2_HOST" ] || missing+=("EC2_HOST")
+          [ -n "$EC2_SSH_KEY" ] || missing+=("EC2_SSH_KEY")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing required GitHub secrets: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/api_backend_key
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/api_backend_key
           chmod 600 ~/.ssh/api_backend_key
-          ssh-keyscan -p "${{ secrets.EC2_SSH_PORT || '22' }}" "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "$EC2_SSH_PORT" "$EC2_HOST" >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
         shell: bash
@@ -43,6 +55,15 @@ jobs:
           DEPLOY_COMMAND: ${{ secrets.DEPLOY_COMMAND }}
         run: |
           set -euo pipefail
+          missing=()
+          [ -n "$EC2_HOST" ] || missing+=("EC2_HOST")
+          [ -n "$EC2_USER" ] || missing+=("EC2_USER")
+          [ -n "$EC2_APP_DIR" ] || missing+=("EC2_APP_DIR")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing required GitHub secrets: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
           ssh -i ~/.ssh/api_backend_key -p "$EC2_SSH_PORT" "$EC2_USER@$EC2_HOST" \
             "APP_DIR='$EC2_APP_DIR' EC2_ENV_FILE='$EC2_ENV_FILE' DEPLOY_COMMAND='$DEPLOY_COMMAND' bash -s" <<'REMOTE'
           set -euo pipefail

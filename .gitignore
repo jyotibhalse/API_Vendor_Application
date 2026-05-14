@@ -30,6 +30,10 @@ api-backend-fixed/uploads/
 api-backend-fixed/uvicorn*.log
 api-backend-fixed/backend-*.log
 dev-server-pids.json
+archived_unwanted/
+
+# Local AWS credentials / deployment scratch files
+*accessKeys*.csv
 
 # OS / editor files
 .DS_Store

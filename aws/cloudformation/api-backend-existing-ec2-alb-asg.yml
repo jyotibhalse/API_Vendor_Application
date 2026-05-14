@@ -1,0 +1,201 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Load balancer and Auto Scaling scaffold for an existing api-backend EC2 instance in the existing VPC.
+
+Parameters:
+  ProjectName:
+    Type: String
+    # CHANGE WHEN REUSING: short name for the new application. It is used in AWS resource names.
+    Default: api-backend
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    # CHANGE WHEN REUSING: VPC where your EC2/RDS already live.
+  PublicSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    # CHANGE WHEN REUSING: public subnet IDs in at least two Availability Zones for the load balancer.
+  ExistingInstanceId:
+    Type: AWS::EC2::Instance::Id
+    # CHANGE WHEN REUSING: the already-running backend EC2 instance to place behind the load balancer.
+  ExistingInstanceSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    # CHANGE WHEN REUSING: security group attached to the existing backend EC2 instance.
+  AppPort:
+    Type: Number
+    # CHANGE WHEN REUSING: port where your app listens on the EC2 instance.
+    Default: 8000
+  HealthCheckPath:
+    Type: String
+    # CHANGE WHEN REUSING: endpoint that returns HTTP 200-399 when the backend is healthy.
+    Default: /
+  AutoScalingImageId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI used by future Auto Scaling instances. Use an AMI created from api-backend after the app is configured.
+    # CHANGE WHEN REUSING: create an AMI from your configured backend EC2 and put that AMI ID here.
+  AutoScalingInstanceType:
+    Type: String
+    # CHANGE WHEN REUSING: EC2 type for future Auto Scaling instances.
+    Default: t3.micro
+  AutoScalingDesiredCapacity:
+    Type: Number
+    # CHANGE WHEN REUSING: keep 0 while only using the existing EC2; set 1 after AMI-based Auto Scaling is ready.
+    Default: 0
+  AutoScalingMinSize:
+    Type: Number
+    # CHANGE WHEN REUSING: keep 0 while only using the existing EC2; usually 1 for full Auto Scaling.
+    Default: 0
+  AutoScalingMaxSize:
+    Type: Number
+    # CHANGE WHEN REUSING: maximum number of backend instances Auto Scaling may run.
+    Default: 1
+
+Conditions:
+  EnableCpuScaling: !Not [!Equals [!Ref AutoScalingMaxSize, 1]]
+
+Resources:
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public HTTP access to api-backend load balancer
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-alb-sg
+
+  ExistingInstanceIngressFromLoadBalancer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      # Allows only the ALB security group to reach the app port on the existing EC2.
+      GroupId: !Ref ExistingInstanceSecurityGroupId
+      IpProtocol: tcp
+      FromPort: !Ref AppPort
+      ToPort: !Ref AppPort
+      SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      Description: Allow ALB to reach api-backend app port
+
+  AutoScalingInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Auto Scaling backend instances accept traffic only from ALB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref AppPort
+          ToPort: !Ref AppPort
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-asg-instance-sg
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Subnets: !Ref PublicSubnetIds
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-alb
+
+  BackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      # Registers the existing EC2 immediately. Future ASG instances are also attached to this target group.
+      HealthCheckEnabled: true
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      Matcher:
+        HttpCode: "200-399"
+      Port: !Ref AppPort
+      Protocol: HTTP
+      TargetType: instance
+      Targets:
+        - Id: !Ref ExistingInstanceId
+          Port: !Ref AppPort
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-tg
+
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  AutoScalingLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub ${ProjectName}-launch-template
+      LaunchTemplateData:
+        ImageId: !Ref AutoScalingImageId
+        InstanceType: !Ref AutoScalingInstanceType
+        SecurityGroupIds:
+          - !Ref AutoScalingInstanceSecurityGroup
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub ${ProjectName}-asg
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - HttpListener
+    Properties:
+      # Auto Scaling starts at 0 so AWS does not launch a duplicate instance until the AMI is ready.
+      DesiredCapacity: !Ref AutoScalingDesiredCapacity
+      HealthCheckGracePeriod: 300
+      HealthCheckType: ELB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref AutoScalingLaunchTemplate
+        Version: !GetAtt AutoScalingLaunchTemplate.LatestVersionNumber
+      MaxSize: !Ref AutoScalingMaxSize
+      MinSize: !Ref AutoScalingMinSize
+      TargetGroupARNs:
+        - !Ref BackendTargetGroup
+      VPCZoneIdentifier: !Ref PublicSubnetIds
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-asg
+          PropagateAtLaunch: true
+
+  CpuScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Condition: EnableCpuScaling
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 60
+
+Outputs:
+  LoadBalancerUrl:
+    Description: Public HTTP URL for the backend through the load balancer.
+    Value: !Sub http://${ApplicationLoadBalancer.DNSName}
+  TargetGroupArn:
+    Description: Target group containing the existing api-backend EC2 and any future Auto Scaling instances.
+    Value: !Ref BackendTargetGroup
+  AutoScalingGroupName:
+    Description: Auto Scaling Group for future instances created from AutoScalingImageId.
+    Value: !Ref AutoScalingGroup
+  AutoScalingLaunchTemplateId:
+    Description: Launch template used by the Auto Scaling Group.
+    Value: !Ref AutoScalingLaunchTemplate

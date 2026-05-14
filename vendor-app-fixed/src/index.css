@@ -45,6 +45,7 @@
   --feedback-accent-text: #f4a623;
   --overlay-scrim: rgba(0, 0, 0, 0.7);
   --image-hover-scrim: rgba(0, 0, 0, 0.55);
+  --floating-action-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
 
@@ -87,6 +88,7 @@ body.theme-light,
   --feedback-accent-text: #9a5d00;
   --overlay-scrim: rgba(37, 28, 16, 0.38);
   --image-hover-scrim: rgba(37, 28, 16, 0.42);
+  --floating-action-shadow: 0 8px 18px rgba(83, 60, 18, 0.14);
   color-scheme: light;
 }
 

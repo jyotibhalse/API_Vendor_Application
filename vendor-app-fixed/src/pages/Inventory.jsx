@@ -536,16 +536,16 @@ export default function Inventory() {
         {/* Barcode scan */}
         <button
           onClick={() => { setShowBarcodeModal(true); setBarcodeInput(""); setBarcodeResult(null) }}
-          className="flex items-center gap-2 px-3 py-[9px] rounded-[14px] bg-[#141618] border border-[#252830] text-accent text-[12px] font-semibold shadow-lg transition-transform hover:scale-105"
-          style={{ boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
+          className="flex items-center gap-2 px-3 py-[9px] rounded-[14px] bg-surface border border-border text-accent text-[12px] font-semibold shadow-lg transition-transform hover:scale-105"
+          style={{ boxShadow: "var(--floating-action-shadow)" }}
         >
           <ScanBarcode size={16} /> Scan
         </button>
         {/* CSV import */}
         <button
           onClick={() => { setShowCsvModal(true); setCsvFile(null); setCsvResult(null) }}
-          className="flex items-center gap-2 px-3 py-[9px] rounded-[14px] bg-[#141618] border border-[#252830] text-accent text-[12px] font-semibold shadow-lg transition-transform hover:scale-105"
-          style={{ boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
+          className="flex items-center gap-2 px-3 py-[9px] rounded-[14px] bg-surface border border-border text-accent text-[12px] font-semibold shadow-lg transition-transform hover:scale-105"
+          style={{ boxShadow: "var(--floating-action-shadow)" }}
         >
           <FileSpreadsheet size={16} /> Import CSV
         </button>

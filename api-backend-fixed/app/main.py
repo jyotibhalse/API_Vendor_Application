@@ -29,18 +29,14 @@ from app.routes.billing import router as billing_router
 from app.core.low_stock_notifications import low_stock_notification_scheduler
 from app.core.realtime import order_realtime_hub
 from app.core.schema_updates import apply_startup_migrations
+from app.core.config import CORS_ALLOW_ORIGINS
 
 app = FastAPI()
 
 # ── CORS must be added first, before any mounts ──────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost",
-        "http://localhost:5173",
-        "http://127.0.0.1",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=CORS_ALLOW_ORIGINS,
     allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],

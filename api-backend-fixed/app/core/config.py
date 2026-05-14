@@ -73,3 +73,11 @@ MAX_UPLOAD_SIZE_MB = _get_int_env("MAX_UPLOAD_SIZE_MB", 5)
 ALLOWED_FILE_TYPES = [ft.strip() for ft in os.getenv("ALLOWED_FILE_TYPES", "jpg,jpeg,png,pdf").split(",")]# Environment Control
 ENV = os.getenv("ENV", "development")
 USE_S3 = os.getenv("USE_S3", "false").lower() == "true"
+CORS_ALLOW_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOW_ORIGINS",
+        "http://localhost,http://localhost:5173,http://127.0.0.1,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+]

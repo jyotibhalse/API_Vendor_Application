@@ -47,12 +47,13 @@ def _get_s3_client():
                 status_code=500,
                 detail="S3 support requires boto3. Disable USE_S3 or install boto3.",
             )
-        _s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-            region_name=AWS_REGION,
-        )
+        client_kwargs = {"region_name": AWS_REGION}
+        if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+            client_kwargs.update(
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            )
+        _s3_client = boto3.client("s3", **client_kwargs)
     return _s3_client
 
 # ─────────────────────────────────────────────────────────────────────────────

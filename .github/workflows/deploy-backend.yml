@@ -17,74 +17,34 @@ concurrency:
 jobs:
   deploy:
     name: Deploy backend on EC2
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Prepare SSH key
+      - name: Validate backend env file
         shell: bash
         env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT || '22' }}
+          EC2_ENV_FILE: ${{ secrets.EC2_ENV_FILE || 'api-backend-fixed/.env' }}
         run: |
           set -euo pipefail
-          missing=()
-          [ -n "$EC2_HOST" ] || missing+=("EC2_HOST")
-          [ -n "$EC2_SSH_KEY" ] || missing+=("EC2_SSH_KEY")
-          if [ "${#missing[@]}" -gt 0 ]; then
-            printf 'Missing required GitHub secrets: %s\n' "${missing[*]}"
+          if [ ! -f "$EC2_ENV_FILE" ]; then
+            echo "Env file not found on runner: $EC2_ENV_FILE"
             exit 1
           fi
 
-          mkdir -p ~/.ssh
-          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/api_backend_key
-          chmod 600 ~/.ssh/api_backend_key
-          ssh-keyscan -p "$EC2_SSH_PORT" "$EC2_HOST" >> ~/.ssh/known_hosts
-
-      - name: Deploy on EC2
+      - name: Deploy backend locally on EC2 runner
         shell: bash
         env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-          EC2_SSH_PORT: ${{ secrets.EC2_SSH_PORT || '22' }}
-          EC2_APP_DIR: ${{ secrets.EC2_APP_DIR }}
           EC2_ENV_FILE: ${{ secrets.EC2_ENV_FILE || 'api-backend-fixed/.env' }}
           DEPLOY_COMMAND: ${{ secrets.DEPLOY_COMMAND }}
         run: |
           set -euo pipefail
-          missing=()
-          [ -n "$EC2_HOST" ] || missing+=("EC2_HOST")
-          [ -n "$EC2_USER" ] || missing+=("EC2_USER")
-          [ -n "$EC2_APP_DIR" ] || missing+=("EC2_APP_DIR")
-          if [ "${#missing[@]}" -gt 0 ]; then
-            printf 'Missing required GitHub secrets: %s\n' "${missing[*]}"
-            exit 1
-          fi
-
-          ssh -i ~/.ssh/api_backend_key -p "$EC2_SSH_PORT" "$EC2_USER@$EC2_HOST" \
-            "APP_DIR='$EC2_APP_DIR' EC2_ENV_FILE='$EC2_ENV_FILE' DEPLOY_COMMAND='$DEPLOY_COMMAND' bash -s" <<'REMOTE'
-          set -euo pipefail
-
-          if [ -z "${APP_DIR:-}" ]; then
-            echo "EC2_APP_DIR secret is required."
-            exit 1
-          fi
-
-          cd "$APP_DIR"
-          git fetch origin main
-          git reset --hard origin/main
 
           if [ -n "${DEPLOY_COMMAND:-}" ]; then
             bash -lc "$DEPLOY_COMMAND"
             exit 0
-          fi
-
-          if [ ! -f "$EC2_ENV_FILE" ]; then
-            echo "Env file not found: $EC2_ENV_FILE"
-            exit 1
           fi
 
           docker build -t api-vendor-backend:latest api-backend-fixed
@@ -97,20 +57,18 @@ jobs:
             api-vendor-backend:latest
 
           docker ps --filter "name=api-vendor-backend"
-          REMOTE
 
-      - name: Verify load balancer
+      - name: Verify backend
         shell: bash
         run: |
           set -euo pipefail
           for attempt in {1..24}; do
-            if curl --fail --show-error --silent --max-time 10 \
-              "http://api-ba-Appli-3rQ8Rx47DyPA-902428055.ap-south-1.elb.amazonaws.com/"; then
+            if curl --fail --show-error --silent --max-time 10 http://127.0.0.1:8000/; then
               exit 0
             fi
-            echo "Load balancer is not ready yet; retry ${attempt}/24..."
+            echo "Backend is not ready yet; retry ${attempt}/24..."
             sleep 5
           done
 
-          echo "Load balancer verification failed after retries."
+          echo "Backend verification failed after retries."
           exit 1

@@ -57,18 +57,8 @@ export default function Billing() {
         if (res.data.requires_payment === false) {
           showToast("Activated!");
           await load();
-        } else if (res.data.phonepe_api_url) {
-          // Build the PhonePe redirect form
-          const form = document.createElement("form");
-          form.method = "POST";
-          form.action = res.data.phonepe_api_url;
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = "request";
-          input.value = res.data.payload_b64;
-          form.appendChild(input);
-          document.body.appendChild(form);
-          form.submit();
+        } else if (res.data.redirect_url) {
+          window.location.href = res.data.redirect_url;
         } else {
           showToast(res.data.message || "Payment initiated", "info");
         }

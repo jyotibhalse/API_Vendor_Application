@@ -86,7 +86,7 @@ export default function AppTopHeader({ homeTo = "/", actions = [] }) {
   const logoSrc = theme === "light" ? apiLogoLight : apiLogo
 
   return (
-    <div className="flex items-center justify-between border-b border-border bg-bg px-5 py-3 transition-colors duration-300">
+    <div className="fixed inset-x-0 top-0 z-40 flex h-[63px] items-center justify-between border-b border-border bg-bg px-5 py-3 transition-colors duration-300">
       <NavLink to={homeTo} className="flex items-center" aria-label="Auto Parts Ind home">
         <img src={logoSrc} alt="Auto Parts Ind" className="h-[38px] w-auto object-contain" />
       </NavLink>

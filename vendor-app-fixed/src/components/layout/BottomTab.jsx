@@ -20,7 +20,7 @@ export default function BottomTab({
 
   return (
     <div
-      className="absolute bottom-0 flex w-full items-stretch border-t border-border bg-surface px-1 pb-4"
+      className="fixed inset-x-0 bottom-0 z-40 flex w-full items-stretch border-t border-border bg-surface px-1 pb-4"
       style={{ height: "82px" }}
     >
       {tabs.map((tab) => (

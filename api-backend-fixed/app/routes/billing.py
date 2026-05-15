@@ -13,6 +13,7 @@ import json
 import os
 from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -232,11 +233,33 @@ async def initiate_phonepe(
     sub.payment_status = "initiated"
     await db.commit()
 
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.post(
+                f"{PHONEPE_API_BASE}/pg/v1/pay",
+                json={"request": payload_b64},
+                headers={
+                    "Content-Type": "application/json",
+                    "X-VERIFY": checksum,
+                },
+            )
+        response.raise_for_status()
+        payment_response = response.json()
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Could not start PhonePe payment") from exc
+
+    redirect_url = (
+        payment_response.get("data", {})
+        .get("instrumentResponse", {})
+        .get("redirectInfo", {})
+        .get("url")
+    )
+    if not redirect_url:
+        raise HTTPException(status_code=502, detail="PhonePe did not return a payment redirect URL")
+
     return {
         "order_id": order_id,
-        "payload_b64": payload_b64,
-        "checksum": checksum,
-        "phonepe_api_url": f"{PHONEPE_API_BASE}/pg/v1/pay",
+        "redirect_url": redirect_url,
     }
 
 

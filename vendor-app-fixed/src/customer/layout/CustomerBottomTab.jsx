@@ -9,7 +9,7 @@ const TABS = [
 export default function CustomerBottomTab() {
   return (
     <div
-      className="absolute bottom-0 w-full bg-surface border-t border-border flex items-stretch px-1 pb-4"
+      className="fixed inset-x-0 bottom-0 z-40 w-full bg-surface border-t border-border flex items-stretch px-1 pb-4"
       style={{ height: "82px" }}
     >
       {TABS.map((tab) => (

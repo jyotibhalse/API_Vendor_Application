@@ -60,7 +60,10 @@ export default function MobileLayout() {
   }
 
   return (
-    <div className="relative h-screen overflow-hidden bg-bg" style={{ paddingBottom: "82px" }}>
+    <div
+      className="relative h-screen overflow-hidden bg-bg"
+      style={{ paddingTop: "63px", paddingBottom: "82px" }}
+    >
       <VendorOrderAlertsBridge />
       <div className="flex h-full flex-col overflow-hidden">
         <AppTopHeader
@@ -70,7 +73,7 @@ export default function MobileLayout() {
             { icon: LogOut, label: "Logout", onClick: handleLogout },
           ]}
         />
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <Outlet />
         </div>
       </div>

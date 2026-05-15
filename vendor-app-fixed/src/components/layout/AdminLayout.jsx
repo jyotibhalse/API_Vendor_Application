@@ -232,7 +232,7 @@ export default function AdminLayout() {
   return (
     <div
       className="relative h-screen overflow-hidden bg-bg animate-fadeUp"
-      style={{ paddingBottom: "82px" }}
+      style={{ paddingTop: "63px", paddingBottom: "82px" }}
     >
       <div className="flex h-full flex-col overflow-hidden">
         <AppTopHeader
@@ -247,7 +247,7 @@ export default function AdminLayout() {
             { icon: LogOut, label: "Logout", onClick: handleLogout },
           ]}
         />
-        <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <Outlet
             context={{
               activeFilter,

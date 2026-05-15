@@ -1,0 +1,8 @@
+{
+  "appId": "com.apivendor.app",
+  "appName": "API Vendor",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">API Vendor</string>
+    <string name="title_activity_main">API Vendor</string>
+    <string name="package_name">com.apivendor.app</string>
+    <string name="custom_url_scheme">com.apivendor.app</string>
+</resources>

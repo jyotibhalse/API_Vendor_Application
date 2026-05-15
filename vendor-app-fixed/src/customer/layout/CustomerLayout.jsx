@@ -14,7 +14,10 @@ export default function CustomerLayout() {
   }
 
   return (
-    <div className="h-screen relative bg-bg overflow-hidden" style={{ paddingBottom: "82px" }}>
+    <div
+      className="h-screen relative bg-bg overflow-hidden"
+      style={{ paddingTop: "63px", paddingBottom: "82px" }}
+    >
       <div className="h-full overflow-hidden flex flex-col">
         <AppTopHeader
           homeTo="/customer"
@@ -22,7 +25,7 @@ export default function CustomerLayout() {
             { icon: LogOut, label: "Logout", onClick: handleLogout },
           ]}
         />
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <Outlet />
         </div>
       </div>
